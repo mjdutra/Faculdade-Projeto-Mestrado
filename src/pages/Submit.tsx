@@ -1,5 +1,9 @@
 "use client";
 import React, { useState } from "react";
+import { db } from "@/firebase/config";
+import { addDoc, collection } from "firebase/firestore";
+import { uploadFile } from "@/services/cloudinary";
+
 import {
   Card,
   CardContent,
@@ -95,12 +99,43 @@ const Submit = () => {
     if (currentStep > 1) setCurrentStep(currentStep - 1);
   };
 
-  const handleSubmit = async () => {
+ const handleSubmit = async () => {
+  try {
     setIsSubmitting(true);
-    await new Promise((res) => setTimeout(res, 1800));
-    setIsSubmitting(false);
+
+    if (!videoFile) {
+      alert("Escolha um vídeo.");
+      return;
+    }
+
+    if (!glbFile) {
+      alert("Escolha um modelo 3D.");
+      return;
+    }
+
+    const uploadedVideo = await uploadFile(videoFile);
+    const uploadedModel = await uploadFile(glbFile);
+
+    const videoURL = uploadedVideo.secure_url;
+    const modelURL = uploadedModel.secure_url;
+
+    await addDoc(collection(db, "magnets"), {
+      title,
+      description,
+      location,
+      points,
+      videoURL,
+      modelURL,
+      createdAt: new Date(),
+    });
+
     setSubmitted(true);
-  };
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   if (submitted) {
     return (
@@ -163,15 +198,15 @@ const Submit = () => {
       `}</style>
         <div
           className="fixed inset-0 -z-10 y2k-bg"
-          style={{
-            background: `
-              radial-gradient(ellipse at 15% 60%, #bfdbfe 0%, transparent 55%),
-              radial-gradient(ellipse at 85% 15%, #ffffff 0%, transparent 45%),
-              radial-gradient(ellipse at 70% 85%, #93c5fd 0%, transparent 45%),
-              radial-gradient(ellipse at 40% 20%, #dbeafe 0%, transparent 50%),
-              linear-gradient(135deg, #1d4ed8 0%, #3b82f6 40%, #eff6ff 100%)
-            `,
-          }}
+          // style={{
+          //   background: `
+          //     radial-gradient(ellipse at 15% 60%, #bfdbfe 0%, transparent 55%),
+          //     radial-gradient(ellipse at 85% 15%, #ffffff 0%, transparent 45%),
+          //     radial-gradient(ellipse at 70% 85%, #93c5fd 0%, transparent 45%),
+          //     radial-gradient(ellipse at 40% 20%, #dbeafe 0%, transparent 50%),
+          //     linear-gradient(135deg, #1d4ed8 0%, #3b82f6 40%, #eff6ff 100%)
+          //   `,
+          // }}
         />
 
       <div className="container mx-auto px-4 py-8 pb-16 max-w-3xl">

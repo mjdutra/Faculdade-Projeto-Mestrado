@@ -160,7 +160,7 @@ const Mapa = () => {
             
           </div>
         </div>
-      {/* Bottom nav is fixed by BottomNav component */}
+      {/* Bottom nav is fixed by TopNav component */}
     </div>
   );
 };

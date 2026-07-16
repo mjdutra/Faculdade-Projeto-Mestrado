@@ -1,14 +1,14 @@
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { Map } from "lucide-react";
 import { MagnetViewer } from "@/components/magnet/MagnetViewer";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { collection, getDocs, GeoPoint, Timestamp } from "firebase/firestore";
 import { db } from "@/firebase/config";
+import { Link } from "react-router-dom";
+import { LayoutGrid } from "lucide-react";
+import { cn } from "@/lib/utils";
+import TopNav from "@/components/TopNav";
 
+const PROJECT_TITLE = "PROJECT";
 const MAGNET_SIZE = 300;
-const PADDING = 16;
 
 interface Magnet {
   id: string;
@@ -21,10 +21,22 @@ interface Magnet {
   data: Timestamp;
 }
 
+interface Position {
+  xPercent: number;
+  yPercent: number;
+}
+
+// média de 3 randoms 
+const centerBiasedRandom = () => (Math.random() + Math.random() + Math.random()) / 3;
+
 const Homepage = () => {
   const [magnets, setMagnets] = useState<Magnet[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [positions, setPositions] = useState<Record<string, Position>>({});
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchMagnets = async () => {
@@ -45,69 +57,111 @@ const Homepage = () => {
     fetchMagnets();
   }, []);
 
-  const magnetsWithPosition = useMemo(
-    () =>
-      magnets.map((magnet) => ({
-        ...magnet,
-        x: Math.random(),
-        y: Math.random(),
-      })),
-    [magnets]
-  );
+  // atribui posição inicial 
+  useEffect(() => {
+    setPositions((prev) => {
+      const next = { ...prev };
+      magnets.forEach((magnet) => {
+        if (!next[magnet.id]) {
+          next[magnet.id] = {
+            xPercent: 20 + centerBiasedRandom() * 60,
+            yPercent: 25 + centerBiasedRandom() * 50,
+          };
+        }
+      });
+      return next;
+    });
+  }, [magnets]);
+
+  // drag
+  useEffect(() => {
+    if (!draggingId) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const container = containerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+      const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+
+      setPositions((prev) => ({
+        ...prev,
+        [draggingId]: {
+          xPercent: Math.min(98, Math.max(2, xPercent)),
+          yPercent: Math.min(96, Math.max(4, yPercent)),
+        },
+      }));
+    };
+
+    const handleMouseUp = () => setDraggingId(null);
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [draggingId]);
 
   return (
-    <div className="absolute top-0 left-0 right-0 z-10">
-      <div className="fixed inset-0 -z-10 y2k-bg" />
-      <div className="grain fixed inset-0 -z-10 pointer-events-none" />
+    <div className="min-h-screen w-full bg-white">
+      <TopNav />
 
-      <div className="container mx-auto px-4 py-3">
-        <div className="flex items-center gap-3 mb-3">
-          <h1 className="text-xl font-bold text-white drop-shadow">Logo</h1>
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="ml-auto bg-white/20 border-white/40 text-white hover:bg-white/30 backdrop-blur-sm"
-          >
-            <Link to="/mapa">
-              <Map className="w-4 h-4 mr-1" />
-              Mapa
-            </Link>
-          </Button>
-        </div>
-      </div>
+      <div
+        ref={containerRef}
+        className="relative w-full h-screen flex items-center justify-center overflow-hidden"
+      >
+        <h1 className="text-[18vw] leading-none font-black tracking-tight text-black select-none whitespace-nowrap">
+          {PROJECT_TITLE}
+        </h1>
 
-      <div className="relative w-full h-screen overflow-hidden">
         {!loading &&
-          magnetsWithPosition.map((magnet) => (
-            <div
-              key={magnet.id}
-              className={`absolute ${
-                hoveredId === magnet.id ? "z-50" : "z-0"
-              }`}
-              style={{
-                left: `calc(${PADDING}px + ${magnet.x} * (100% - ${MAGNET_SIZE + PADDING * 2}px))`,
-                top: `calc(${PADDING}px + ${magnet.y} * (100% - ${MAGNET_SIZE + PADDING * 2}px))`,
-              }}
-              onMouseEnter={() => setHoveredId(magnet.id)}
-              onMouseLeave={() => setHoveredId(null)}
-            >
-              <Card className="bg-transparent shadow-none border-0">
-                <div className="w-[300px] h-[300px]">
-                  <MagnetViewer modelUrl={magnet.modelURL} />
-                </div>
-              </Card>
+          magnets.map((magnet) => {
+            const pos = positions[magnet.id];
+            if (!pos) return null;
+            const isDragging = draggingId === magnet.id;
 
-              {hoveredId === magnet.id && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 rounded-lg bg-white/90 backdrop-blur-sm shadow-lg text-sm text-gray-800 pointer-events-none z-20">
-                  <p className="font-semibold">{magnet.titulo}</p>
-                  <p className="text-gray-500">{magnet.localização}</p>
-                  <p className="mt-1 text-gray-600">{magnet.descrição}</p>
-                </div>
-              )}
-            </div>
-          ))}
+            return (
+              <div
+                key={magnet.id}
+                className={cn(
+                  "absolute select-none cursor-grab active:cursor-grabbing",
+                  isDragging ? "z-50" : hoveredId === magnet.id ? "z-40" : "z-20"
+                )}
+                style={{
+                  left: `${pos.xPercent}%`,
+                  top: `${pos.yPercent}%`,
+                  width: MAGNET_SIZE,
+                  height: MAGNET_SIZE,
+                  transform: "translate(-50%, -50%)",
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setDraggingId(magnet.id);
+                }}
+                onMouseEnter={() => setHoveredId(magnet.id)}
+                onMouseLeave={() => setHoveredId(null)}
+              >
+                <MagnetViewer modelUrl={magnet.modelURL} />
+
+                {hoveredId === magnet.id && !isDragging && (
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 p-3 rounded-lg bg-white shadow-lg border text-sm text-gray-800 pointer-events-none z-30">
+                    <p className="font-semibold">{magnet.titulo}</p>
+                    <p className="text-gray-500">{magnet.localização}</p>
+                    <p className="mt-1 text-gray-600">{magnet.descrição}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
       </div>
+
+      <Link
+        to="/mapa"
+        className="fixed bottom-6 right-6 z-50 w-10 h-10 flex items-center justify-center rounded-md text-black hover:bg-black/5 transition-colors"
+      >
+        <LayoutGrid className="w-5 h-5" strokeWidth={2} />
+      </Link>
     </div>
   );
 };

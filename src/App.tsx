@@ -11,7 +11,7 @@ import Scan from "./pages/Scan";
 import VRExperience from "./pages/VRExperience";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
-import BottomNav from "@/components/BottomNav";
+import TopNav from "@/components/TopNav";
 
 
 const queryClient = new QueryClient();
@@ -32,7 +32,7 @@ const App = () => (
           {/* <Route path="/magnet" element={<MagnetPage />} /> */}
           <Route path="*" element={<NotFound />} />
         </Routes>
-        <BottomNav />
+        <TopNav />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

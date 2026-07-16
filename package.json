@@ -2,7 +2,20 @@
   "name": "vite_react_shadcn_ts",
   "version": "0.0.0",
   "private": true,
+  "description": "",
+  "keywords": [],
+  "homepage": "https://github.com/mjdutra/Faculdade-Projeto-Mestrado#readme",
+  "bugs": {
+    "url": "https://github.com/mjdutra/Faculdade-Projeto-Mestrado/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mjdutra/Faculdade-Projeto-Mestrado.git"
+  },
+  "license": "ISC",
+  "author": "",
   "type": "module",
+  "main": "eslint.config.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -87,10 +100,5 @@
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
     "vite": "^6.3.4"
-  },
-  "description": "",
-  "main": "eslint.config.js",
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  }
 }

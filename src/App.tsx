@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Homepage from "./pages/Homepage";
-// import MagnetPage from "./pages/MagnetPage";
 import Mapa from "./pages/Mapa";
 import Submit from "./pages/Submit";
 import Scan from "./pages/Scan";
@@ -29,7 +28,6 @@ const App = () => (
           <Route path="/submit" element={<Submit />} />
           <Route path="/vr/:magnetId" element={<VRExperience />} />
           <Route path="/profile" element={<Profile />} />
-          {/* <Route path="/magnet" element={<MagnetPage />} /> */}
           <Route path="*" element={<NotFound />} />
         </Routes>
         <TopNav />

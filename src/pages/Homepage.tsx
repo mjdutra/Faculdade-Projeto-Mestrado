@@ -6,9 +6,10 @@ import { Link } from "react-router-dom";
 import { LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 import TopNav from "@/components/TopNav";
+import MagnetPage from "@/components/magnet/MagnetPage";
 
 const PROJECT_TITLE = "PROJECT";
-const MAGNET_SIZE = 300;
+const MAGNET_SIZE = 400;
 
 interface Magnet {
   id: string;
@@ -26,7 +27,7 @@ interface Position {
   yPercent: number;
 }
 
-// média de 3 randoms 
+
 const centerBiasedRandom = () => (Math.random() + Math.random() + Math.random()) / 3;
 
 const Homepage = () => {
@@ -35,6 +36,8 @@ const Homepage = () => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [positions, setPositions] = useState<Record<string, Position>>({});
   const [draggingId, setDraggingId] = useState<string | null>(null);
+
+  const [selectedMagnet, setSelectedMagnet] = useState<Magnet | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -57,7 +60,7 @@ const Homepage = () => {
     fetchMagnets();
   }, []);
 
-  // atribui posição inicial 
+
   useEffect(() => {
     setPositions((prev) => {
       const next = { ...prev };
@@ -111,7 +114,7 @@ const Homepage = () => {
         ref={containerRef}
         className="relative w-full h-screen flex items-center justify-center overflow-hidden"
       >
-        <h1 className="text-[18vw] leading-none font-black tracking-tight text-black select-none whitespace-nowrap">
+        <h1 className="text-[14vw] tracking-wide leading-none font-black tracking-tight text-black select-none whitespace-nowrap">
           {PROJECT_TITLE}
         </h1>
 
@@ -141,6 +144,7 @@ const Homepage = () => {
                 }}
                 onMouseEnter={() => setHoveredId(magnet.id)}
                 onMouseLeave={() => setHoveredId(null)}
+                onDoubleClick={() => setSelectedMagnet(magnet)}
               >
                 <MagnetViewer modelUrl={magnet.modelURL} />
 
@@ -162,7 +166,14 @@ const Homepage = () => {
       >
         <LayoutGrid className="w-5 h-5" strokeWidth={2} />
       </Link>
+
+
+      <MagnetPage
+        magnet={selectedMagnet}
+        onClose={() => setSelectedMagnet(null)}
+      />
     </div>
+    
   );
 };
 

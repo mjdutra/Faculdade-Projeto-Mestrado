@@ -17,7 +17,7 @@ export default function TopNav() {
     );
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white-10">
       <div className="grid grid-cols-3 items-center px-6 md:px-10 h-16 mx-auto text-black">
         <div className="justify-self-start">
           <Link to={leftItem.path} className={linkClass(leftItem.path)}>

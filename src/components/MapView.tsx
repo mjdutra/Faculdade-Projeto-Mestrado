@@ -47,8 +47,8 @@ export default function MapView({
     };
   }, [center, zoom, onMapLoad]);
 
-  // Teal tint filter to match app theme (grayscale + sepia + hue-rotate + saturate)
-  const tealTintFilter = 'grayscale(100%) sepia(30%) hue-rotate(120deg) saturate(200%)';
+
+  const tealTintFilter = 'grayscale(100%) sepia(30%) hue-rotate(120deg) saturate(0%)';
 
   return (
     <div 

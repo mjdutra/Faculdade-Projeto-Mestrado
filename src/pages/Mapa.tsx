@@ -64,7 +64,7 @@ const Mapa = () => {
 
     filteredMagnets.forEach(magnet => {
       const markerElement = document.createElement('div');
-      markerElement.className = 'w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white cursor-pointer hover:bg-blue-700 transition-transform hover:scale-110 shadow-lg';
+      markerElement.className = 'w-10 h-10 bg-black-600 rounded-full flex items-center justify-center text-white cursor-pointer hover:bg-black-700 transition-transform hover:scale-110 shadow-lg';
       markerElement.innerHTML = '🧲';
       
       markerElement.addEventListener('click', () => {
@@ -99,7 +99,6 @@ const Mapa = () => {
       <div className="absolute top-0 left-0 right-0 z-10">
           <div className="container mx-auto px-4 py-3">
             <div className="flex items-center gap-3 mb-3">
-              <h1 className="text-xl font-bold text-foreground">Logo</h1>
 
               <Button
                 asChild

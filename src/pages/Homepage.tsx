@@ -36,6 +36,7 @@ const Homepage = () => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [positions, setPositions] = useState<Record<string, Position>>({});
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [hasDragged, setHasDragged] = useState(false);
 
   const [selectedMagnet, setSelectedMagnet] = useState<Magnet | null>(null);
 
@@ -81,6 +82,7 @@ const Homepage = () => {
     if (!draggingId) return;
 
     const handleMouseMove = (e: MouseEvent) => {
+      setHasDragged(true);
       const container = containerRef.current;
       if (!container) return;
       const rect = container.getBoundingClientRect();
@@ -96,7 +98,13 @@ const Homepage = () => {
       }));
     };
 
-    const handleMouseUp = () => setDraggingId(null);
+    const handleMouseUp = () => {
+      setDraggingId(null);
+    
+      setTimeout(() => {
+        setHasDragged(false);
+      }, 0);
+    };
 
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
@@ -140,11 +148,16 @@ const Homepage = () => {
                 }}
                 onMouseDown={(e) => {
                   e.preventDefault();
+                  setHasDragged(false);
                   setDraggingId(magnet.id);
                 }}
                 onMouseEnter={() => setHoveredId(magnet.id)}
                 onMouseLeave={() => setHoveredId(null)}
-                onDoubleClick={() => setSelectedMagnet(magnet)}
+                onClick={() => {
+                  if (!hasDragged) {
+                    setSelectedMagnet(magnet);
+                  }
+                }}
               >
                 <MagnetViewer modelUrl={magnet.modelURL} />
 

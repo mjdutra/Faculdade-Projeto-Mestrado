@@ -8,11 +8,7 @@ import { User, Settings } from "lucide-react";
 const Profile = () => {
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">Perfil</h1>
-        </div>
-
+      <div className="container mx-auto px-4 py-20">
         <div className="max-w-2xl mx-auto space-y-6">
           <Card>
             <CardHeader>

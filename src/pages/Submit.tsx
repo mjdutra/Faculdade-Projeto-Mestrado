@@ -1,34 +1,17 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { db } from "@/firebase/config";
 import { addDoc, collection } from "firebase/firestore";
 import { uploadFile } from "@/services/cloudinary";
 import { QRCodeSVG } from "qrcode.react";
 import TopNav from "@/components/TopNav";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import Viewer from "@/components/video/Video360Viewer";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  MapPin,
-  Video,
-  Star,
-  Box,
-  QrCode,
-  ChevronRight,
-  ChevronLeft,
-  Check,
-  Plus,
-  Trash2,
-} from "lucide-react";
-
+import { MapPin, Video, Star, Box, QrCode, ChevronRight, ChevronLeft, Check, Plus, Trash2 } from "lucide-react";
 
 
 interface PointOfInterest {
@@ -60,6 +43,19 @@ const Submit = () => {
 
   // Step 2 – Video
   const [videoFile, setVideoFile] = useState<File | null>(null);
+
+
+  const videoObjectUrl = useMemo(() => {
+    if (!videoFile) return null;
+    return URL.createObjectURL(videoFile);
+  }, [videoFile]);
+
+
+  useEffect(() => {
+    return () => {
+      if (videoObjectUrl) URL.revokeObjectURL(videoObjectUrl);
+    };
+  }, [videoObjectUrl]);
 
   // Step 3 – Points of interest
   const [points, setPoints] = useState<PointOfInterest[]>([
@@ -178,8 +174,9 @@ const Submit = () => {
               ]);
               setGlbFile(null);
             }}
-            className="bg-black text-white hover:bg-neutral-800 uppercase tracking-widest text-xs font-bold w-full"
-          >
+
+
+            className="bg-black text-white hover:bg-neutral-800 uppercase tracking-widest text-xs font-bold w-full">
             Nova Experiência
           </Button>
         </div>
@@ -188,14 +185,45 @@ const Submit = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col">
       
       <TopNav />
-
       <div className="pt-28 h-[calc(100vh-4rem)] md:px-10 md:h-[calc(100vh-7rem)] px-4">
         <div className="w-full h-full border border-black">
           <div className="grid md:grid-cols-2 h-full">
+
             <div className="relative h-full">
+              {currentStep === 3 && videoObjectUrl && (
+                <div className="
+                absolute
+                top-0
+                left-0
+                w-full
+            
+                h-[35%]
+                sm:h-[40%]
+                md:h-[45%]
+                lg:h-[50%]
+            
+                p-4
+                md:p-8
+                flex
+                justify-center
+                md:justify-start
+                items-start">
+
+                <div className="
+                  h-full
+                  aspect-video
+                  max-w-full
+                  max-h-full
+                  overflow-hidden
+                  border">
+                  <Viewer videoUrl={videoObjectUrl} />
+                </div>
+              </div>
+              )}
+
               <h1 className="relative
                 md:absolute 
                 left-10 
@@ -231,6 +259,8 @@ const Submit = () => {
                 <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight mt-1 mb-8 text-black">
                   {STEPS[currentStep - 1].label}
                 </h2>
+
+
 
                 {/* ── Step 1: Info ── */}
                 {currentStep === 1 && (

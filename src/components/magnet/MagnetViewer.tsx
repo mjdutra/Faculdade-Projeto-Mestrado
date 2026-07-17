@@ -34,7 +34,15 @@ export function MagnetViewer({
           <MagnetModel url={modelUrl} />
           <Environment preset="city" />
         </Suspense>
-        <OrbitControls enableZoom={false} enablePan={false} />
+        <OrbitControls 
+            enableZoom={false}
+            //enablePan={false}
+            rotateSpeed={0.4}
+            enableDamping
+            dampingFactor={0.08}
+            // minPolarAngle={Math.PI / 2}
+            // maxPolarAngle={Math.PI / 2} 
+            />
       </Canvas>
     </div>
   );

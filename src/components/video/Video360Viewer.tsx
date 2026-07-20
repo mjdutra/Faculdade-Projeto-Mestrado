@@ -1,5 +1,6 @@
 "use client";
 
+import { ThreeEvent } from "@react-three/fiber";
 import {
   forwardRef,
   useEffect,
@@ -28,9 +29,22 @@ interface Video360ViewerProps {
   onPlayingChange?: (isPlaying: boolean) => void;
   onVolumeChange?: (volume: number, muted: boolean) => void;
   onEnded?: () => void;
+  onPositionClick?: (position: {
+    yaw: number;
+    pitch: number;
+  }) => void;
 }
 
-function Sphere({ video }: { video: HTMLVideoElement }) {
+function Sphere({
+  video,
+  onPositionClick,
+}: {
+  video: HTMLVideoElement;
+  onPositionClick?: (position: {
+    yaw: number;
+    pitch: number;
+  }) => void;
+}) {
   const texture = useMemo(() => {
     const t = new THREE.VideoTexture(video);
     t.colorSpace = THREE.SRGBColorSpace;
@@ -49,10 +63,34 @@ function Sphere({ video }: { video: HTMLVideoElement }) {
     }
   });
 
+  // 👇 COLOCA AQUI
+  const handleClick = (event: ThreeEvent<MouseEvent>) => {
+    if (!onPositionClick) return;
+
+    const p = event.point.clone().normalize();
+
+    const yaw = THREE.MathUtils.radToDeg(
+      Math.atan2(p.x, p.z)
+    );
+
+    const pitch = THREE.MathUtils.radToDeg(
+      Math.asin(p.y)
+    );
+
+    onPositionClick({
+      yaw,
+      pitch,
+    });
+  };
+
   return (
-    <mesh>
+    <mesh onClick={handleClick}>
       <sphereGeometry args={[50, 64, 64]} />
-      <meshBasicMaterial map={texture} side={THREE.BackSide} toneMapped={false} />
+      <meshBasicMaterial
+        map={texture}
+        side={THREE.BackSide}
+        toneMapped={false}
+      />
     </mesh>
   );
 }
@@ -66,6 +104,7 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(
       onPlayingChange,
       onVolumeChange,
       onEnded,
+      onPositionClick,
     },
     ref
   ) {
@@ -167,7 +206,10 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(
             camera={{ position: [0, 0, 0.1] }}
             style={{ width: "100%", height: "100%" }}
           >
-            <Sphere video={videoEl} />
+            <Sphere 
+              video={videoEl}
+              onPositionClick={onPositionClick} 
+          />
             <OrbitControls enableZoom={false} enablePan={false} rotateSpeed={-0.4} />
           </Canvas>
         )}

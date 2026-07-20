@@ -7,12 +7,11 @@ import { QRCodeSVG } from "qrcode.react";
 import TopNav from "@/components/TopNav";
 import VideoControls from "@/components/video/VideoControls";
 import Viewer, { Video360ViewerHandle } from "@/components/video/Video360Viewer";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Video, Star, Box, QrCode, ChevronRight, ChevronLeft, Check, Plus, Trash2 } from "lucide-react";
+import { MapPin, Video, Star, Box, ChevronRight, ChevronLeft, Check, Plus, Trash2 } from "lucide-react";
 
 
 interface PointOfInterest {
@@ -20,14 +19,17 @@ interface PointOfInterest {
   title: string;
   description: string;
   timestamp: string;
+
+  yaw: number;
+  pitch: number;
 }
 
 const STEPS = [
-  { id: 1, label: "Informação", icon: MapPin },
-  { id: 2, label: "Vídeo 360º", icon: Video },
-  { id: 3, label: "Pontos de Interesse", icon: Star },
-  { id: 4, label: "Íman 3D", icon: Box },
-  { id: 5, label: "QR Code", icon: QrCode },
+  { id: 1, label: "Informação"},
+  { id: 2, label: "Vídeo 360º"},
+  { id: 3, label: "Pontos de Interesse"},
+  { id: 4, label: "Íman 3D"},
+  { id: 5, label: "QR Code"},
 ];
 
 const Submit = () => {
@@ -95,8 +97,17 @@ const Submit = () => {
 
   // Step 3 – Points of interest
   const [points, setPoints] = useState<PointOfInterest[]>([
-    { id: "1", title: "", description: "", timestamp: "" },
+    {
+      id: "1", title: "", description: "", timestamp: "",
+      yaw: 0,
+      pitch: 0
+    },
   ]);
+
+  const [clickedPosition, setClickedPosition] = useState({
+    yaw: 0,
+    pitch: 0,
+  });
 
   // Step 4 – Magnet GLB
   const [glbFile, setGlbFile] = useState<File | null>(null);
@@ -104,7 +115,11 @@ const Submit = () => {
   const addPoint = () => {
     setPoints([
       ...points,
-      { id: Date.now().toString(), title: "", description: "", timestamp: "" },
+      {
+        id: Date.now().toString(), title: "", description: "", timestamp: "",
+        yaw: 0,
+        pitch: 0
+      },
     ]);
   };
 
@@ -206,7 +221,11 @@ const Submit = () => {
               setDescription("");
               setVideoFile(null);
               setPoints([
-                { id: "1", title: "", description: "", timestamp: "" },
+                {
+                  id: "1", title: "", description: "", timestamp: "",
+                  yaw: 0,
+                  pitch: 0
+                },
               ]);
               setGlbFile(null);
             }}
@@ -263,6 +282,11 @@ const Submit = () => {
                   <Viewer
                     ref={viewerRef}
                     videoUrl={videoObjectUrl}
+
+                    onPositionClick={(position) =>
+                      setClickedPosition(position)
+                    }
+
                     onTimeUpdate={setCurrentTime}
                     onDurationChange={setDuration}
                     onPlayingChange={setIsPlaying}
@@ -406,7 +430,7 @@ const Submit = () => {
                     {points.map((point, index) => (
                       <div
                         key={point.id}
-                        className="p-4 border border-gray-200 rounded-lg space-y-3 relative"
+                        className="p-4 border border-gray-200 space-y-3 relative"
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold uppercase tracking-widest text-gray-500">
@@ -457,6 +481,16 @@ const Submit = () => {
                             className="mt-1 w-32"
                           />
                         </div>
+
+                        <div className="mt-2 text-xs text-gray-500">
+                          <div>
+                            Yaw: {clickedPosition.yaw.toFixed(1)}°
+                          </div>
+                          <div>
+                            Pitch: {clickedPosition.pitch.toFixed(1)}°
+                          </div>
+                        </div>
+
                       </div>
                     ))}
                     <Button

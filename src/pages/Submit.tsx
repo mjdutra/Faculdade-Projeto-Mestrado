@@ -1,11 +1,12 @@
 "use client";
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/firebase/config";
 import { addDoc, collection } from "firebase/firestore";
 import { uploadFile } from "@/services/cloudinary";
 import { QRCodeSVG } from "qrcode.react";
 import TopNav from "@/components/TopNav";
-import Viewer from "@/components/video/Video360Viewer";
+import VideoControls from "@/components/video/VideoControls";
+import Viewer, { Video360ViewerHandle } from "@/components/video/Video360Viewer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,18 +45,53 @@ const Submit = () => {
   // Step 2 – Video
   const [videoFile, setVideoFile] = useState<File | null>(null);
 
-
   const videoObjectUrl = useMemo(() => {
     if (!videoFile) return null;
     return URL.createObjectURL(videoFile);
   }, [videoFile]);
-
 
   useEffect(() => {
     return () => {
       if (videoObjectUrl) URL.revokeObjectURL(videoObjectUrl);
     };
   }, [videoObjectUrl]);
+
+  // ── Player 360º (usado no Step 3) ──────────────────────────
+  const viewerRef = useRef<Video360ViewerHandle>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
+
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Repõe estado do player quando sai do Step 3
+  useEffect(() => {
+    if (currentStep !== 3) {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    }
+  }, [currentStep]);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(document.fullscreenElement === playerContainerRef.current);
+    };
+    document.addEventListener("fullscreenchange", handleFsChange);
+    return () => document.removeEventListener("fullscreenchange", handleFsChange);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    const el = playerContainerRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      el.requestFullscreen().catch(() => {});
+    }
+  }, []);
 
   // Step 3 – Points of interest
   const [points, setPoints] = useState<PointOfInterest[]>([
@@ -202,8 +238,8 @@ const Submit = () => {
             
                 h-[35%]
                 sm:h-[40%]
-                md:h-[45%]
-                lg:h-[50%]
+                md:h-[50%]
+                lg:h-[60%]
             
                 p-4
                 md:p-8
@@ -212,14 +248,43 @@ const Submit = () => {
                 md:justify-start
                 items-start">
 
-                <div className="
-                  h-full
-                  aspect-video
-                  max-w-full
-                  max-h-full
-                  overflow-hidden
-                  border">
-                  <Viewer videoUrl={videoObjectUrl} />
+                <div
+                  ref={playerContainerRef}
+                  className="
+                    relative
+                    h-full
+                    aspect-video
+                    max-w-full
+                    max-h-full
+                    overflow-hidden
+                    border
+                    bg-black"
+                >
+                  <Viewer
+                    ref={viewerRef}
+                    videoUrl={videoObjectUrl}
+                    onTimeUpdate={setCurrentTime}
+                    onDurationChange={setDuration}
+                    onPlayingChange={setIsPlaying}
+                    onVolumeChange={(v, m) => {
+                      setVolume(v);
+                      setIsMuted(m);
+                    }}
+                  />
+
+                  <VideoControls
+                    isPlaying={isPlaying}
+                    currentTime={currentTime}
+                    duration={duration}
+                    volume={volume}
+                    isMuted={isMuted}
+                    isFullscreen={isFullscreen}
+                    onPlayPause={() => viewerRef.current?.togglePlay()}
+                    onSeek={(time) => viewerRef.current?.seek(time)}
+                    onVolumeChange={(value) => viewerRef.current?.setVolume(value)}
+                    onToggleMute={() => viewerRef.current?.toggleMute()}
+                    onToggleFullscreen={toggleFullscreen}
+                  />
                 </div>
               </div>
               )}

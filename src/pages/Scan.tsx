@@ -1,44 +1,91 @@
 "use client";
 
 import React, { useState, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Scan, CheckCircle, XCircle } from "lucide-react";
+import { Camera, CheckCircle, XCircle, ScanLine } from "lucide-react";
+
+import { useEffect } from "react";
+import { Html5Qrcode } from "html5-qrcode";
+
 
 const Scan = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const qrScanner = useRef<Html5Qrcode | null>(null);
 
-  const startScanning = async () => {
-    setIsScanning(true);
-    setScanResult(null);
-    setIsSuccess(false);
-    
+
+  useEffect(() => {
+    return () => {
+        qrScanner.current?.stop().catch(() => {});
+        qrScanner.current?.clear();
+    };
+}, []);
+
+
+useEffect(() => {
+  if (!isScanning) return;
+
+  const startCamera = async () => {
     try {
-      // Simulate QR code scanning
-      setTimeout(() => {
-        const mockResult = 'QR001'; // This would be the actual scanned QR code
-        setScanResult(mockResult);
-        setIsSuccess(true);
-        setIsScanning(false);
-        
-        // Redirect to VR experience after successful scan
-        setTimeout(() => {
-          window.location.href = `/vr/${mockResult}`;
-        }, 2000);
-      }, 3000);
-    } catch (error) {
-      console.error('Error scanning QR code:', error);
+      qrScanner.current = new Html5Qrcode("reader");
+
+      await qrScanner.current.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+        },
+        async (decodedText) => {
+          setScanResult(decodedText);
+          setIsSuccess(true);
+
+          await qrScanner.current?.stop();
+          await qrScanner.current?.clear();
+
+          setIsScanning(false);
+
+          window.location.href = `/vr/${decodedText}`;
+        },
+        () => {}
+      );
+    } catch (err) {
+      console.error(err);
       setIsScanning(false);
-      setIsSuccess(false);
     }
   };
 
-  const stopScanning = () => {
+  setTimeout(startCamera, 100);
+
+  return () => {
+    qrScanner.current?.stop().catch(() => {});
+    qrScanner.current?.clear();
+  };
+}, [isScanning]);
+
+
+
+
+const startScanning = () => {
+  setScanResult(null);
+  setIsSuccess(false);
+  setIsScanning(true);
+};
+
+  const stopScanning = async () => {
+    try {
+        if (qrScanner.current) {
+            await qrScanner.current.stop();
+            await qrScanner.current.clear();
+            qrScanner.current = null;
+        }
+    } catch (err) {
+        console.error(err);
+    }
+
     setIsScanning(false);
   };
 
@@ -54,48 +101,56 @@ const Scan = () => {
         window.location.href = `/vr/${qrCode}`;
       }, 1000);
     }
+
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-100">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-gray-900">Scan de Imã</h1>
-          <p className="text-gray-600 mt-2">Digitalize o QR code do seu imã para aceder à experiência</p>
-        </div>
-
+    <div className="min-h-screen">
+      <div className="container mx-auto px-4 py-40">
         <div className="max-w-2xl mx-auto">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Camera className="w-5 h-5" />
-                Scanner de QR Code
-              </CardTitle>
-              <CardDescription>
-                Aponte a câmara para o QR code do imã para iniciar a experiência
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+          Experiência
+        </span>
+
+        <h2 className="text-3xl font-black uppercase tracking-tight mt-1">
+        Digitalizar QR Code
+        </h2>
+
+        <p className="text-gray-400 mt-4">
+        Aponte a câmara para o QR Code do íman para abrir a experiência.
+        </p>
+
               {/* Scanner Area */}
               <div className="relative">
-                <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden relative">
-                  {isScanning ? (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <div className="text-center text-white">
-                        <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <p>A digitalizar QR code...</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <div className="text-center text-gray-400">
-                        <Camera className="w-16 h-16 mx-auto mb-4" />
-                        <p>Clique em "Iniciar Digitalização" para começar</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <div className="aspect-video overflow-hidden relative">
+                {isScanning ? (
+                  <div
+                      id="reader"
+                      className="w-full h-full"
+                  />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center px-8">
+                <Camera className="w-24 h-24 text-black mb-8" />
+              
+                <Button
+                  onClick={startScanning}
+                  className="
+                    rounded-none
+                    bg-black
+                    hover:bg-neutral-800
+                    uppercase
+                    tracking-widest
+                    text-sm
+                    font-bold
+                    px-10
+                    py-6
+                  "
+                >
+                  Iniciar Scanner
+                </Button>
+              </div>
+              )}
+              </div>
                 
                 {/* Scanning Animation */}
                 {isScanning && (
@@ -108,30 +163,9 @@ const Scan = () => {
                 )}
               </div>
 
-              {/* Controls */}
-              <div className="flex gap-4">
-                <Button
-                  onClick={isScanning ? stopScanning : startScanning}
-                  className="flex-1"
-                  variant={isScanning ? "destructive" : "default"}
-                >
-                  {isScanning ? (
-                    <>
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Parar Digitalização
-                    </>
-                  ) : (
-                    <>
-                      <Scan className="w-4 h-4 mr-2" />
-                      Iniciar Digitalização
-                    </>
-                  )}
-                </Button>
-              </div>
-
               {/* Result */}
               {scanResult && (
-                <div className={`p-4 rounded-lg border-2 ${
+                <div className={`p-4 border-2 ${
                   isSuccess ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'
                 }`}>
                   <div className="flex items-center gap-2 mb-2">
@@ -154,25 +188,28 @@ const Scan = () => {
               )}
 
               {/* Manual Input */}
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold mb-4">Ou digite manualmente</h3>
-                <form onSubmit={manualInput} className="space-y-4">
-                  <div>
-                    <Label htmlFor="qrCode">Código QR</Label>
-                    <Input
-                      id="qrCode"
-                      name="qrCode"
-                      placeholder="Ex: QR001"
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full">
-                    Aceder à Experiência
-                  </Button>
-                </form>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="pt-8 border-t border-black">
+                <Label className="uppercase tracking-widest text-xs">
+                    Código Manual
+                </Label>
+                <Input
+                    className="rounded-none mt-2"
+                    placeholder="QR001"
+                />
+                <Button
+                    type="submit"
+                    className="
+                        mt-4
+                        w-full
+                        rounded-none
+                        uppercase
+                        bg-neutral-700
+                        hover:bg-neutral-800
+                    "
+                >
+                    Abrir Experiência
+                </Button>
+               </div>
         </div>
       </div>
     </div>

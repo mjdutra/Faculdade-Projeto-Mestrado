@@ -2,7 +2,7 @@
 
 import { ThreeEvent } from "@react-three/fiber";
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 
@@ -15,6 +15,7 @@ export interface Video360ViewerHandle {
   seek: (time: number) => void;
   setVolume: (value: number) => void;
   toggleMute: () => void;
+  lookAt: (yaw: number, pitch: number) => void; 
 }
 
 interface Video360ViewerProps {
@@ -31,6 +32,51 @@ interface Video360ViewerProps {
     pitch: number;
   }) => void;
 }
+
+interface CameraControllerHandle {
+  lookAt: (yaw: number, pitch: number) => void;
+}
+
+const CameraController = forwardRef<CameraControllerHandle, {}>(
+  function CameraController(_, ref) {
+    const { camera } = useThree();
+    const orbitRef = useRef<any>(null);
+
+    useImperativeHandle(ref, () => ({
+      lookAt: (yaw: number, pitch: number) => {
+        const yawRad = THREE.MathUtils.degToRad(yaw);
+        const pitchRad = THREE.MathUtils.degToRad(pitch);
+
+        // direção unitária, igual à usada em yawPitchToVector (radius = 1)
+        const dir = new THREE.Vector3(
+          Math.sin(yawRad) * Math.cos(pitchRad),
+          Math.sin(pitchRad),
+          Math.cos(yawRad) * Math.cos(pitchRad)
+        );
+
+        const distance = camera.position.length() || 0.1;
+
+        // a câmara olha sempre para o alvo (0,0,0), logo tem de ficar
+        // posicionada do lado oposto à direção que queremos ver
+        camera.position.copy(dir.clone().multiplyScalar(-distance));
+        camera.lookAt(0, 0, 0);
+
+        orbitRef.current?.update();
+      },
+    }));
+
+    return (
+      <OrbitControls
+        ref={orbitRef}
+        enableZoom={false}
+        enablePan={false}
+        rotateSpeed={-0.4}
+      />
+    );
+  }
+);
+
+
 
 function Sphere({
   video,
@@ -155,6 +201,7 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(
   ) {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
+    const cameraControllerRef = useRef<CameraControllerHandle>(null);
 
     useEffect(() => {
       const v = document.createElement("video");
@@ -240,6 +287,9 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(
           v.muted = !v.muted;
           if (!v.muted && v.volume === 0) v.volume = 1;
         },
+        lookAt: (yaw: number, pitch: number) => {          
+          cameraControllerRef.current?.lookAt(yaw, pitch);
+        },
       }),
       []
     );
@@ -249,19 +299,15 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(
         {videoEl && (
           <Canvas
             camera={{ position: [0, 0, 0.1] }}
-            style={{ width: "100%", height: "100%", cursor:isAddingPOI ? "crosshair" : "grab" }}
+            style={{ width: "100%", height: "100%", cursor: isAddingPOI ? "crosshair" : "grab" }}
           >
-            <Sphere 
+            <Sphere
               video={videoEl}
               points={points}
               isAddingPOI={isAddingPOI}
-              onPositionClick={onPositionClick} 
-          />
-            <OrbitControls
-              enableZoom={false}
-              enablePan={false}
-              rotateSpeed={-0.4}
-          />
+              onPositionClick={onPositionClick}
+            />
+            <CameraController ref={cameraControllerRef} />
           </Canvas>
         )}
       </div>

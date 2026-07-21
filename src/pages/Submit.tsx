@@ -486,6 +486,7 @@ const Submit = () => {
                         {points.map((point, index) => (
                           <div
                           key={point.id}
+
                           className="p-4 border border-gray-200 space-y-3 relative"
                         >
                           <div className="flex items-center justify-between">
@@ -569,7 +570,11 @@ const Submit = () => {
                         {points.map((point, index) => (
                           <div
                             key={point.id}
-                            className="border border-gray-200 p-4 flex justify-between items-center hover:bg-gray-50 transition"
+                            onClick={() => {
+                              viewerRef.current?.seek(point.timestamp);
+                              viewerRef.current?.lookAt(point.yaw, point.pitch);
+                            }}
+                            className="border border-gray-200 p-4 flex justify-between items-center hover:bg-gray-50 transition cursor-pointer"
                           >
                             <div>
                               <h3 className="font-semibold">
@@ -588,13 +593,15 @@ const Submit = () => {
                             <Button
                               size="icon"
                               variant="ghost"
-                              onClick={() => removePoint(point.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removePoint(point.id);
+                              }}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
                         ))}
-
                       </div>
                       )}
                   </div>

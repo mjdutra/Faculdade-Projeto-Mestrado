@@ -1,17 +1,12 @@
 "use client";
 
 import { ThreeEvent } from "@react-three/fiber";
-import {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
+
+import { PointOfInterest } from "@/components/poi/PointOfInterest";
 
 export interface Video360ViewerHandle {
   play: () => void;
@@ -24,6 +19,7 @@ export interface Video360ViewerHandle {
 
 interface Video360ViewerProps {
   videoUrl: string;
+  points: PointOfInterest[];
   onTimeUpdate?: (time: number) => void;
   onDurationChange?: (duration: number) => void;
   onPlayingChange?: (isPlaying: boolean) => void;
@@ -37,14 +33,20 @@ interface Video360ViewerProps {
 
 function Sphere({
   video,
+  points,
   onPositionClick,
 }: {
+
+
   video: HTMLVideoElement;
+  points: PointOfInterest[];
   onPositionClick?: (position: {
     yaw: number;
     pitch: number;
   }) => void;
 }) {
+
+
   const texture = useMemo(() => {
     const t = new THREE.VideoTexture(video);
     t.colorSpace = THREE.SRGBColorSpace;
@@ -63,8 +65,9 @@ function Sphere({
     }
   });
 
-  // 👇 COLOCA AQUI
+
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
+
     if (!onPositionClick) return;
 
     const p = event.point.clone().normalize();
@@ -83,15 +86,59 @@ function Sphere({
     });
   };
 
+    function yawPitchToVector(
+      yaw:number,
+      pitch:number,
+      radius:number
+  ){
+
+      const yawRad=THREE.MathUtils.degToRad(yaw);
+
+      const pitchRad=THREE.MathUtils.degToRad(pitch);
+
+      return new THREE.Vector3(
+
+          radius*Math.sin(yawRad)*Math.cos(pitchRad),
+
+          radius*Math.sin(pitchRad),
+
+          radius*Math.cos(yawRad)*Math.cos(pitchRad)
+
+      );
+
+  }
+
   return (
-    <mesh onClick={handleClick}>
-      <sphereGeometry args={[50, 64, 64]} />
-      <meshBasicMaterial
-        map={texture}
-        side={THREE.BackSide}
-        toneMapped={false}
-      />
-    </mesh>
+    <>
+      <mesh onClick={handleClick}>
+        <sphereGeometry args={[50, 64, 64]} />
+        <meshBasicMaterial
+          map={texture}
+          side={THREE.BackSide}
+          toneMapped={false}
+        />
+      </mesh>
+  
+      {points.map((point) => {
+  
+        const pos = yawPitchToVector(
+          point.yaw,
+          point.pitch,
+          49.8
+        );
+  
+        return (
+          <mesh
+            key={point.id}
+            position={pos}
+          >
+            <sphereGeometry args={[0.6,16,16]} />
+            <meshBasicMaterial color="red" />
+          </mesh>
+        );
+  
+      })}
+    </>
   );
 }
 
@@ -99,6 +146,7 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(
   function Video360Viewer(
     {
       videoUrl,
+      points,
       onTimeUpdate,
       onDurationChange,
       onPlayingChange,
@@ -208,9 +256,14 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(
           >
             <Sphere 
               video={videoEl}
+              points={points}
               onPositionClick={onPositionClick} 
           />
-            <OrbitControls enableZoom={false} enablePan={false} rotateSpeed={-0.4} />
+            <OrbitControls
+              enableZoom={false}
+              enablePan={false}
+              rotateSpeed={-0.4}
+          />
           </Canvas>
         )}
       </div>

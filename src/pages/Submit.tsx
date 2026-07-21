@@ -12,17 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MapPin, Video, Star, Box, ChevronRight, ChevronLeft, Check, Plus, Trash2 } from "lucide-react";
+import { PointOfInterest } from "@/components/poi/PointOfInterest";
 
-
-interface PointOfInterest {
-  id: string;
-  title: string;
-  description: string;
-  timestamp: string;
-
-  yaw: number;
-  pitch: number;
-}
 
 const STEPS = [
   { id: 1, label: "Informação"},
@@ -39,12 +30,18 @@ const Submit = () => {
 
   const [createdMagnetId, setCreatedMagnetId] = useState<string | null>(null);
 
-  // Step 1 – Info
+  // Step 1 – Info ---------------------------------------------------------------------------------
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
 
-  // Step 2 – Video
+
+
+
+
+
+
+  // Step 2 – Video ---------------------------------------------------------------------------------
   const [videoFile, setVideoFile] = useState<File | null>(null);
 
   const videoObjectUrl = useMemo(() => {
@@ -58,7 +55,7 @@ const Submit = () => {
     };
   }, [videoObjectUrl]);
 
-  // ── Player 360º (usado no Step 3) ──────────────────────────
+  // ── Player 360º (usado no Step 3)
   const viewerRef = useRef<Video360ViewerHandle>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
 
@@ -95,28 +92,44 @@ const Submit = () => {
     }
   }, []);
 
-  // Step 3 – Points of interest
-  const [points, setPoints] = useState<PointOfInterest[]>([
-    {
-      id: "1", title: "", description: "", timestamp: "",
-      yaw: 0,
-      pitch: 0
-    },
-  ]);
+
+
+
+
+
+
+  // Step 3 – Points of interest ----------------------------------------------------------------------
+  const [points, setPoints] = useState<PointOfInterest[]>([]);
 
   const [clickedPosition, setClickedPosition] = useState({
     yaw: 0,
     pitch: 0,
   });
 
-  // Step 4 – Magnet GLB
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+  
+    return `${m.toString().padStart(2,"0")}:${s
+      .toString()
+      .padStart(2,"0")}`;
+  };
+
+
+
+
+
+
+  // Step 4 – Magnet GLB ----------------------------------------------------------------------
   const [glbFile, setGlbFile] = useState<File | null>(null);
 
   const addPoint = () => {
     setPoints([
       ...points,
       {
-        id: Date.now().toString(), title: "", description: "", timestamp: "",
+        id: Date.now().toString(), title: "", description: "",
+        timestamp: 0,
         yaw: 0,
         pitch: 0
       },
@@ -222,7 +235,8 @@ const Submit = () => {
               setVideoFile(null);
               setPoints([
                 {
-                  id: "1", title: "", description: "", timestamp: "",
+                  id: "1", title: "", description: "", 
+                  timestamp: 0,
                   yaw: 0,
                   pitch: 0
                 },
@@ -239,9 +253,15 @@ const Submit = () => {
     );
   }
 
+
+
+
+
+
+
+
   return (
-    <div className="min-h-screen flex flex-col">
-      
+    <div className="min-h-screen flex flex-col"> 
       <TopNav />
       <div className="pt-28 h-[calc(100vh-4rem)] md:px-10 md:h-[calc(100vh-7rem)] px-4">
         <div className="w-full h-full border border-black">
@@ -281,11 +301,22 @@ const Submit = () => {
                 >
                   <Viewer
                     ref={viewerRef}
+                    points={points}
                     videoUrl={videoObjectUrl}
 
-                    onPositionClick={(position) =>
-                      setClickedPosition(position)
-                    }
+                    onPositionClick={(position) => {
+
+                      const newPoint: PointOfInterest = {
+                          id: Date.now().toString(),
+                          title: "",
+                          description: "",
+                          timestamp: currentTime,
+                          yaw: position.yaw,
+                          pitch: position.pitch
+                      };
+                  
+                      setPoints(prev => [...prev, newPoint]);
+                  }}
 
                     onTimeUpdate={setCurrentTime}
                     onDurationChange={setDuration}
@@ -472,14 +503,7 @@ const Submit = () => {
                         </div>
                         <div>
                           <Label>Timestamp no vídeo</Label>
-                          <Input
-                            value={point.timestamp}
-                            onChange={(e) =>
-                              updatePoint(point.id, "timestamp", e.target.value)
-                            }
-                            placeholder="Ex: 00:45"
-                            className="mt-1 w-32"
-                          />
+                          <p>{formatTime(point.timestamp)}</p>
                         </div>
 
                         <div className="mt-2 text-xs text-gray-500">

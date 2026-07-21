@@ -38,18 +38,11 @@ function Sphere({
   isAddingPOI,
   onPositionClick,
 }: {
-
-
   video: HTMLVideoElement;
   points: PointOfInterest[];
-  isAddingPOI:boolean;
-  onPositionClick?: (position: {
-    yaw: number;
-    pitch: number;
-  }) => void;
+  isAddingPOI: boolean;
+  onPositionClick?: (position: { yaw: number; pitch: number }) => void;
 }) {
-
-
   const texture = useMemo(() => {
     const t = new THREE.VideoTexture(video);
     t.colorSpace = THREE.SRGBColorSpace;
@@ -69,77 +62,59 @@ function Sphere({
   });
 
 
-  const handleClick = (event: ThreeEvent<MouseEvent>) => {
-    if(!isAddingPOI) return;
-    if (!onPositionClick) return;
+  const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
+  const DRAG_THRESHOLD = 6; 
+
+  const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
+    pointerDownPos.current = { x: event.clientX, y: event.clientY };
+  };
+
+  const handlePointerUp = (event: ThreeEvent<PointerEvent>) => {
+    const down = pointerDownPos.current;
+    pointerDownPos.current = null;
+
+    if (!isAddingPOI || !onPositionClick || !down) return;
+
+    const dx = event.clientX - down.x;
+    const dy = event.clientY - down.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+
+    if (distance > DRAG_THRESHOLD) return;
 
     const p = event.point.clone().normalize();
 
-    const yaw = THREE.MathUtils.radToDeg(
-      Math.atan2(p.x, p.z)
-    );
+    const yaw = THREE.MathUtils.radToDeg(Math.atan2(p.x, p.z));
+    const pitch = THREE.MathUtils.radToDeg(Math.asin(p.y));
 
-    const pitch = THREE.MathUtils.radToDeg(
-      Math.asin(p.y)
-    );
-
-    onPositionClick({
-      yaw,
-      pitch,
-    });
+    onPositionClick({ yaw, pitch });
   };
 
-    function yawPitchToVector(
-      yaw:number,
-      pitch:number,
-      radius:number
-  ){
-
-      const yawRad=THREE.MathUtils.degToRad(yaw);
-
-      const pitchRad=THREE.MathUtils.degToRad(pitch);
-
-      return new THREE.Vector3(
-
-          radius*Math.sin(yawRad)*Math.cos(pitchRad),
-
-          radius*Math.sin(pitchRad),
-
-          radius*Math.cos(yawRad)*Math.cos(pitchRad)
-
-      );
-
+  function yawPitchToVector(yaw: number, pitch: number, radius: number) {
+    const yawRad = THREE.MathUtils.degToRad(yaw);
+    const pitchRad = THREE.MathUtils.degToRad(pitch);
+    return new THREE.Vector3(
+      radius * Math.sin(yawRad) * Math.cos(pitchRad),
+      radius * Math.sin(pitchRad),
+      radius * Math.cos(yawRad) * Math.cos(pitchRad)
+    );
   }
 
   return (
     <>
-      <mesh onClick={handleClick}>
+      <mesh onPointerDown={handlePointerDown} onPointerUp={handlePointerUp}>
         <sphereGeometry args={[50, 64, 64]} />
-        <meshBasicMaterial
-          map={texture}
-          side={THREE.BackSide}
-          toneMapped={false}
-        />
+        <meshBasicMaterial map={texture} side={THREE.BackSide} toneMapped={false} />
       </mesh>
-  
+
       {points.map((point) => {
-  
-        const pos = yawPitchToVector(
-          point.yaw,
-          point.pitch,
-          49.8
-        );
-  
+        const pos = yawPitchToVector(point.yaw, point.pitch, 49.8);
         return (
-          <mesh
-            key={point.id}
-            position={pos}
-          >
-            <sphereGeometry args={[0.6,16,16]} />
+          <mesh key={point.id} position={pos}>
+            <sphereGeometry args={[0.6, 16, 16]} />
             <meshBasicMaterial color="red" />
           </mesh>
         );
-  
       })}
     </>
   );

@@ -9,7 +9,7 @@ import TopNav from "@/components/TopNav";
 import MagnetPage from "@/components/magnet/MagnetPage";
 
 const PROJECT_TITLE = "PROJECT";
-const MAGNET_SIZE = 400;
+const MAGNET_SIZE = 800;
 
 interface Magnet {
   id: string;
@@ -122,7 +122,7 @@ const Homepage = () => {
         ref={containerRef}
         className="relative w-full h-screen flex items-center justify-center overflow-hidden"
       >
-        <h1 className="text-[14vw] tracking-wide leading-none font-black tracking-tight text-black select-none whitespace-nowrap">
+        <h1 className="text-[18vw] tracking-wide leading-none font-black tracking-tight text-black select-none whitespace-nowrap">
           {PROJECT_TITLE}
         </h1>
 

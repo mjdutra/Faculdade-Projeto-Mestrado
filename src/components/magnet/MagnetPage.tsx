@@ -65,7 +65,7 @@ export default function MagnetPage({
         {magnet && (
           <div className="flex flex-col h-full">
 
-            <div className="flex justify-between items-center p-2 border-b border-black">
+            <div className="flex justify-between items-center p-2 border-b border-black py-5">
               <h2 className="text-sm font-black uppercase">
                 about
               </h2>

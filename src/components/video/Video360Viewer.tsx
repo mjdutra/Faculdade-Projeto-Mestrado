@@ -20,6 +20,7 @@ export interface Video360ViewerHandle {
 interface Video360ViewerProps {
   videoUrl: string;
   points: PointOfInterest[];
+  isAddingPOI:boolean;
   onTimeUpdate?: (time: number) => void;
   onDurationChange?: (duration: number) => void;
   onPlayingChange?: (isPlaying: boolean) => void;
@@ -34,12 +35,14 @@ interface Video360ViewerProps {
 function Sphere({
   video,
   points,
+  isAddingPOI,
   onPositionClick,
 }: {
 
 
   video: HTMLVideoElement;
   points: PointOfInterest[];
+  isAddingPOI:boolean;
   onPositionClick?: (position: {
     yaw: number;
     pitch: number;
@@ -67,7 +70,7 @@ function Sphere({
 
 
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
-
+    if(!isAddingPOI) return;
     if (!onPositionClick) return;
 
     const p = event.point.clone().normalize();
@@ -147,6 +150,7 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(
     {
       videoUrl,
       points,
+      isAddingPOI,
       onTimeUpdate,
       onDurationChange,
       onPlayingChange,
@@ -252,11 +256,12 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(
         {videoEl && (
           <Canvas
             camera={{ position: [0, 0, 0.1] }}
-            style={{ width: "100%", height: "100%" }}
+            style={{ width: "100%", height: "100%", cursor:isAddingPOI ? "crosshair" : "grab" }}
           >
             <Sphere 
               video={videoEl}
               points={points}
+              isAddingPOI={isAddingPOI}
               onPositionClick={onPositionClick} 
           />
             <OrbitControls

@@ -5,11 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Play,   Pause, 
-  Volume2, 
-  VolumeX, 
-  Maximize, 
+import { Play, Pause, Volume2, VolumeX, Maximize, 
   Eye,
   MapPin,
   Clock

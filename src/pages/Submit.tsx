@@ -100,11 +100,8 @@ const Submit = () => {
 
   // Step 3 – Points of interest ----------------------------------------------------------------------
   const [points, setPoints] = useState<PointOfInterest[]>([]);
+  const [isAddingPOI, setIsAddingPOI] = useState(false);
 
-  const [clickedPosition, setClickedPosition] = useState({
-    yaw: 0,
-    pitch: 0,
-  });
 
 
   const formatTime = (seconds: number) => {
@@ -303,6 +300,7 @@ const Submit = () => {
                     ref={viewerRef}
                     points={points}
                     videoUrl={videoObjectUrl}
+                    isAddingPOI={isAddingPOI}
 
                     onPositionClick={(position) => {
 
@@ -458,6 +456,26 @@ const Submit = () => {
                 {/* ── Step 3: Points of interest ── */}
                 {currentStep === 3 && (
                   <div className="space-y-4">
+                    <Button
+                      type="button"
+                      onClick={() => setIsAddingPOI(!isAddingPOI)}
+                      className={`
+                        rounded-none
+                        uppercase
+                        text-xs
+                        font-bold
+                        tracking-widest
+                        transition-colors
+                        ${
+                          isAddingPOI
+                            ? "bg-gray-500 text-white hover:bg-gray-600"
+                            : "bg-transparent border border-gray-300 text-gray-500 hover:border-gray-300 hover:text-white"
+                        }
+                      `}
+                    >
+                      {isAddingPOI ? "Back" : "+ Add Point of Interest"}
+                    </Button>
+
                     {points.map((point, index) => (
                       <div
                         key={point.id}
@@ -505,16 +523,6 @@ const Submit = () => {
                           <Label>Timestamp no vídeo</Label>
                           <p>{formatTime(point.timestamp)}</p>
                         </div>
-
-                        <div className="mt-2 text-xs text-gray-500">
-                          <div>
-                            Yaw: {clickedPosition.yaw.toFixed(1)}°
-                          </div>
-                          <div>
-                            Pitch: {clickedPosition.pitch.toFixed(1)}°
-                          </div>
-                        </div>
-
                       </div>
                     ))}
                     <Button

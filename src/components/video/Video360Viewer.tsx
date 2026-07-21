@@ -38,10 +38,8 @@ interface Video360ViewerProps {
 function Sphere({
   video,
   onPositionClick,
-  isDragging,
 }: {
   video: HTMLVideoElement;
-  isDragging: boolean;
   onPositionClick?: (position: {
     yaw: number;
     pitch: number;
@@ -65,10 +63,9 @@ function Sphere({
     }
   });
 
-
+  // 👇 COLOCA AQUI
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
     if (!onPositionClick) return;
-    if (isDragging) return;
 
     const p = event.point.clone().normalize();
 
@@ -202,9 +199,6 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(
       []
     );
 
-    const [isDragging, setIsDragging] = useState(false);
-    const controlsRef = useRef<any>(null);
-
     return (
       <div className="relative w-full h-full bg-black">
         {videoEl && (
@@ -214,21 +208,9 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(
           >
             <Sphere 
               video={videoEl}
-              onPositionClick={onPositionClick}
-              isDragging={isDragging}
+              onPositionClick={onPositionClick} 
           />
-           <OrbitControls
-              ref={controlsRef}
-              enableZoom={false}
-              enablePan={false}
-              rotateSpeed={-0.4}
-              onStart={() => setIsDragging(true)}
-              onEnd={() => {
-                requestAnimationFrame(() => {
-                  setIsDragging(false);
-                });
-              }}
-            />
+            <OrbitControls enableZoom={false} enablePan={false} rotateSpeed={-0.4} />
           </Canvas>
         )}
       </div>

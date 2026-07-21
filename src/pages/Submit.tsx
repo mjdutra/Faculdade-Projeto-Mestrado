@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Video, Star, Box, ChevronRight, ChevronLeft, Check, Plus } from "lucide-react";
+import { MapPin, Video, Star, Box, ChevronRight, ChevronLeft, Check, Plus, Trash2 } from "lucide-react";
 
 
 interface PointOfInterest {
@@ -19,24 +19,18 @@ interface PointOfInterest {
   title: string;
   description: string;
   timestamp: string;
+
   yaw: number;
   pitch: number;
 }
 
 const STEPS = [
-  { id: 1, label: "Informação" },
-  { id: 2, label: "Vídeo 360º" },
-  { id: 3, label: "Pontos de Interesse" },
-  { id: 4, label: "Íman 3D" },
-  { id: 5, label: "QR Code" },
+  { id: 1, label: "Informação"},
+  { id: 2, label: "Vídeo 360º"},
+  { id: 3, label: "Pontos de Interesse"},
+  { id: 4, label: "Íman 3D"},
+  { id: 5, label: "QR Code"},
 ];
-
-function formatTimestamp(seconds: number) {
-  if (!isFinite(seconds) || isNaN(seconds)) return "00:00";
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-}
 
 const Submit = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -75,38 +69,11 @@ const Submit = () => {
   const [isMuted, setIsMuted] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // ── Modo de criação de POI ──────────────────────────────────
-  const [isPlacingPoint, setIsPlacingPoint] = useState(false);
-
-  const startPlacingPoint = useCallback(() => {
-    viewerRef.current?.pause();
-    setIsPlacingPoint(true);
-  }, []);
-
-  const cancelPlacingPoint = useCallback(() => {
-    setIsPlacingPoint(false);
-  }, []);
-
-  // ESC cancela o modo de criação
-  useEffect(() => {
-    if (!isPlacingPoint) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        cancelPlacingPoint();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isPlacingPoint, cancelPlacingPoint]);
-
-  // Repõe estado do player e do modo de criação quando sai do Step 3
+  // Repõe estado do player quando sai do Step 3
   useEffect(() => {
     if (currentStep !== 3) {
       setIsPlaying(false);
       setCurrentTime(0);
-      setIsPlacingPoint(false);
     }
   }, [currentStep]);
 
@@ -129,29 +96,45 @@ const Submit = () => {
   }, []);
 
   // Step 3 – Points of interest
-  const [points, setPoints] = useState<PointOfInterest[]>([]);
-
-
-  const handlePositionClick = useCallback(
-    (position: { yaw: number; pitch: number }) => {
-      if (!isPlacingPoint) return;
-  
-      const point: PointOfInterest = {
-        id: crypto.randomUUID(),
-        title: "",
-        description: "",
-        timestamp: formatTimestamp(currentTime),
-        yaw: position.yaw,
-        pitch: position.pitch,
-      };
-  
-      setPoints((prev) => [...prev, point]);
+  const [points, setPoints] = useState<PointOfInterest[]>([
+    {
+      id: "1", title: "", description: "", timestamp: "",
+      yaw: 0,
+      pitch: 0
     },
-    [isPlacingPoint, currentTime]
-  );
+  ]);
+
+  const [clickedPosition, setClickedPosition] = useState({
+    yaw: 0,
+    pitch: 0,
+  });
 
   // Step 4 – Magnet GLB
   const [glbFile, setGlbFile] = useState<File | null>(null);
+
+  const addPoint = () => {
+    setPoints([
+      ...points,
+      {
+        id: Date.now().toString(), title: "", description: "", timestamp: "",
+        yaw: 0,
+        pitch: 0
+      },
+    ]);
+  };
+
+  const removePoint = (id: string) => {
+    if (points.length === 1) return;
+    setPoints(points.filter((p) => p.id !== id));
+  };
+
+  const updatePoint = (
+    id: string,
+    field: keyof PointOfInterest,
+    value: string
+  ) => {
+    setPoints(points.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
+  };
 
   const canProceed = () => {
     if (currentStep === 1) return title && location && description;
@@ -237,7 +220,13 @@ const Submit = () => {
               setLocation("");
               setDescription("");
               setVideoFile(null);
-              setPoints([]);
+              setPoints([
+                {
+                  id: "1", title: "", description: "", timestamp: "",
+                  yaw: 0,
+                  pitch: 0
+                },
+              ]);
               setGlbFile(null);
             }}
 
@@ -280,7 +269,7 @@ const Submit = () => {
 
                 <div
                   ref={playerContainerRef}
-                  className={`
+                  className="
                     relative
                     h-full
                     aspect-video
@@ -288,15 +277,16 @@ const Submit = () => {
                     max-h-full
                     overflow-hidden
                     border
-                    bg-black
-                    ${isPlacingPoint ? "cursor-crosshair" : ""}
-                  `}
+                    bg-black"
                 >
                   <Viewer
                     ref={viewerRef}
                     videoUrl={videoObjectUrl}
-                    points={points}
-                    onPositionClick={handlePositionClick}
+
+                    onPositionClick={(position) =>
+                      setClickedPosition(position)
+                    }
+
                     onTimeUpdate={setCurrentTime}
                     onDurationChange={setDuration}
                     onPlayingChange={setIsPlaying}
@@ -304,7 +294,6 @@ const Submit = () => {
                       setVolume(v);
                       setIsMuted(m);
                     }}
-                    
                   />
 
                   <VideoControls
@@ -438,33 +427,81 @@ const Submit = () => {
                 {/* ── Step 3: Points of interest ── */}
                 {currentStep === 3 && (
                   <div className="space-y-4">
+                    {points.map((point, index) => (
+                      <div
+                        key={point.id}
+                        className="p-4 border border-gray-200 space-y-3 relative"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold uppercase tracking-widest text-gray-500">
+                            Ponto {index + 1}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removePoint(point.id)}
+                            disabled={points.length === 1}
+                            className="text-gray-400 hover:text-black h-7 px-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <div>
+                          <Label>Título</Label>
+                          <Input
+                            value={point.title}
+                            onChange={(e) =>
+                              updatePoint(point.id, "title", e.target.value)
+                            }
+                            placeholder="Ex: Torre Principal"
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label>Descrição</Label>
+                          <Textarea
+                            value={point.description}
+                            onChange={(e) =>
+                              updatePoint(point.id, "description", e.target.value)
+                            }
+                            placeholder="Descreva este ponto de interesse..."
+                            rows={2}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label>Timestamp no vídeo</Label>
+                          <Input
+                            value={point.timestamp}
+                            onChange={(e) =>
+                              updatePoint(point.id, "timestamp", e.target.value)
+                            }
+                            placeholder="Ex: 00:45"
+                            className="mt-1 w-32"
+                          />
+                        </div>
+
+                        <div className="mt-2 text-xs text-gray-500">
+                          <div>
+                            Yaw: {clickedPosition.yaw.toFixed(1)}°
+                          </div>
+                          <div>
+                            Pitch: {clickedPosition.pitch.toFixed(1)}°
+                          </div>
+                        </div>
+
+                      </div>
+                    ))}
                     <Button
                       type="button"
-                      onClick={() =>
-                        isPlacingPoint ? cancelPlacingPoint() : startPlacingPoint()
-                      }
-                      className={
-                        isPlacingPoint
-                          ? "w-full rounded-none uppercase text-xs font-bold tracking-widest border border-black bg-black text-white hover:bg-neutral-800"
-                          : "w-full rounded-none uppercase text-xs font-bold tracking-widest border border-black bg-white text-black hover:bg-gray-50"
-                      }
+                      variant="outline"
+                      onClick={addPoint}
+                      className="w-full border-dashed"
                     >
-                      {isPlacingPoint ? (
-                        "Voltar"
-                      ) : (
-                        <>
-                          <Plus className="w-4 h-4 mr-2" />
-                          Adicionar POI
-                        </>
-                      )}
+                      <Plus className="w-4 h-4 mr-2" />
+                      Adicionar Ponto de Interesse
                     </Button>
-
-                    {isPlacingPoint && (
-                      <div className="text-sm text-gray-600 space-y-1">
-                        <p>Clique para posicionar o ponto de interesse.</p>
-                        <p>ESC para cancelar.</p>
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -522,7 +559,8 @@ const Submit = () => {
                       <div className="flex items-center gap-3">
                         <Star className="w-4 h-4 text-black shrink-0" />
                         <span>
-                          {points.length} ponto(s) de interesse
+                          {points.filter((p) => p.title).length} ponto(s) de
+                          interesse
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
@@ -601,4 +639,3 @@ const Submit = () => {
 };
 
 export default Submit;
-

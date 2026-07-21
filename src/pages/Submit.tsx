@@ -126,6 +126,7 @@ const Submit = () => {
       ...points,
       {
         id: Date.now().toString(), title: "", description: "",
+        duration:0,
         timestamp: 0,
         yaw: 0,
         pitch: 0
@@ -141,7 +142,7 @@ const Submit = () => {
   const updatePoint = (
     id: string,
     field: keyof PointOfInterest,
-    value: string
+    value: string | number
   ) => {
     setPoints(points.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
   };
@@ -233,6 +234,7 @@ const Submit = () => {
               setPoints([
                 {
                   id: "1", title: "", description: "", 
+                  duration: 0,
                   timestamp: 0,
                   yaw: 0,
                   pitch: 0
@@ -303,18 +305,18 @@ const Submit = () => {
                     isAddingPOI={isAddingPOI}
 
                     onPositionClick={(position) => {
-
                       const newPoint: PointOfInterest = {
-                          id: Date.now().toString(),
-                          title: "",
-                          description: "",
-                          timestamp: currentTime,
-                          yaw: position.yaw,
-                          pitch: position.pitch
+                        id: Date.now().toString(),
+                        title: "",
+                        description: "",
+                        timestamp: currentTime,
+                        duration: 5, // valor por omissão, em segundos
+                        yaw: position.yaw,
+                        pitch: position.pitch,
                       };
-                  
+                    
                       setPoints(prev => [...prev, newPoint]);
-                  }}
+                    }}
 
                     onTimeUpdate={setCurrentTime}
                     onDurationChange={setDuration}
@@ -523,10 +525,33 @@ const Submit = () => {
                               />
                             </div>
 
-                            <div>
-                              <Label>Timestamp</Label>
-                              <p>{formatTime(point.timestamp)}</p>
-                            </div>                           
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label>Início</Label>
+                                <p className="text-sm text-gray-700 mt-1">
+                                  {formatTime(point.timestamp)}
+                                </p>
+                              </div>
+
+                              <div>
+                                <Label htmlFor={`duration-${point.id}`}>Duração (segundos)</Label>
+                                <Input
+                                  id={`duration-${point.id}`}
+                                  type="number"
+                                  min={1}
+                                  step={1}
+                                  value={point.duration}
+                                  onChange={(e) =>
+                                    updatePoint(
+                                      point.id,
+                                      "duration",
+                                      Math.max(1, Number(e.target.value) || 1)
+                                    )
+                                  }
+                                  className="mt-1"
+                                />
+                              </div>
+                            </div>   
                           </div>
                         ))}
                       </>
@@ -556,7 +581,7 @@ const Submit = () => {
                               </p>
 
                               <p className="text-sm text-gray-500">
-                                Duração: 10 s
+                                Duração: {point.duration}s
                               </p>
                             </div>
 

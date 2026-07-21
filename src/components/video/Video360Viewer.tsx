@@ -55,15 +55,29 @@ function Sphere({
     };
   }, [texture]);
 
+  
+  const pointMeshRefs = useRef<Record<string, THREE.Mesh | null>>({});
+
   useFrame(() => {
     if (video.readyState >= video.HAVE_CURRENT_DATA) {
       texture.needsUpdate = true;
     }
+
+    const t = video.currentTime;
+
+    points.forEach((point) => {
+      const mesh = pointMeshRefs.current[point.id];
+      if (!mesh) return;
+
+      const duration = point.duration ?? 5;
+      const visible = t >= point.timestamp && t <= point.timestamp + duration;
+
+      mesh.visible = visible;
+    });
   });
 
-
   const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
-  const DRAG_THRESHOLD = 6; 
+  const DRAG_THRESHOLD = 6;
 
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
     pointerDownPos.current = { x: event.clientX, y: event.clientY };
@@ -79,11 +93,9 @@ function Sphere({
     const dy = event.clientY - down.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-
     if (distance > DRAG_THRESHOLD) return;
 
     const p = event.point.clone().normalize();
-
     const yaw = THREE.MathUtils.radToDeg(Math.atan2(p.x, p.z));
     const pitch = THREE.MathUtils.radToDeg(Math.asin(p.y));
 
@@ -110,7 +122,13 @@ function Sphere({
       {points.map((point) => {
         const pos = yawPitchToVector(point.yaw, point.pitch, 49.8);
         return (
-          <mesh key={point.id} position={pos}>
+          <mesh
+            key={point.id}
+            ref={(el) => {
+              pointMeshRefs.current[point.id] = el;
+            }}
+            position={pos}
+          >
             <sphereGeometry args={[0.6, 16, 16]} />
             <meshBasicMaterial color="red" />
           </mesh>

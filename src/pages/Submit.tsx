@@ -476,66 +476,112 @@ const Submit = () => {
                       {isAddingPOI ? "Back" : "+ Add Point of Interest"}
                     </Button>
 
-                    {points.map((point, index) => (
-                      <div
-                        key={point.id}
-                        className="p-4 border border-gray-200 space-y-3 relative"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold uppercase tracking-widest text-gray-500">
-                            Ponto {index + 1}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removePoint(point.id)}
-                            disabled={points.length === 1}
-                            className="text-gray-400 hover:text-black h-7 px-2"
+
+
+
+                    {isAddingPOI ? (
+                      <>
+                        {points.map((point, index) => (
+                          <div
+                          key={point.id}
+                          className="p-4 border border-gray-200 space-y-3 relative"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold uppercase tracking-widest text-gray-500">
+                              Ponto {index + 1}
+                            </span>
+                        
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removePoint(point.id)}
+                              className="text-gray-400 hover:text-black h-7 px-2"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+
+                            <div>
+                              <Label>Título</Label>
+                              <Input
+                                value={point.title}
+                                onChange={(e) =>
+                                  updatePoint(point.id, "title", e.target.value)
+                                }
+                              />
+                            </div>
+
+                            <div>
+                              <Label>Descrição</Label>
+                              <Textarea
+                                rows={2}
+                                value={point.description}
+                                onChange={(e) =>
+                                  updatePoint(point.id, "description", e.target.value)
+                                }
+                              />
+                            </div>
+
+                            <div>
+                              <Label>Timestamp</Label>
+                              <p>{formatTime(point.timestamp)}</p>
+                            </div>                           
+                          </div>
+                        ))}
+                      </>
+
+                      ) : (
+
+                      <div className="space-y-3">
+
+                        {points.length === 0 && (
+                          <div className="border border-dashed border-gray-300 p-8 text-center text-sm text-gray-400">
+                            Ainda não existem Pontos de Interesse.
+                          </div>
+                        )}
+
+                        {points.map((point, index) => (
+                          <div
+                            key={point.id}
+                            className="border border-gray-200 p-4 flex justify-between items-center hover:bg-gray-50 transition"
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                        <div>
-                          <Label>Título</Label>
-                          <Input
-                            value={point.title}
-                            onChange={(e) =>
-                              updatePoint(point.id, "title", e.target.value)
-                            }
-                            placeholder="Ex: Torre Principal"
-                            className="mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label>Descrição</Label>
-                          <Textarea
-                            value={point.description}
-                            onChange={(e) =>
-                              updatePoint(point.id, "description", e.target.value)
-                            }
-                            placeholder="Descreva este ponto de interesse..."
-                            rows={2}
-                            className="mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label>Timestamp no vídeo</Label>
-                          <p>{formatTime(point.timestamp)}</p>
-                        </div>
+                            <div>
+                              <h3 className="font-semibold">
+                                {point.title || `Ponto ${index + 1}`}
+                              </h3>
+
+                              <p className="text-sm text-gray-500">
+                                Início: {formatTime(point.timestamp)}
+                              </p>
+
+                              <p className="text-sm text-gray-500">
+                                Duração: 10 s
+                              </p>
+                            </div>
+
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => removePoint(point.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+
                       </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={addPoint}
-                      className="w-full border-dashed"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Adicionar Ponto de Interesse
-                    </Button>
+                      )}
                   </div>
                 )}
+
+
+
+
+
+
+
+
 
                 {/* ── Step 4: Magnet GLB ── */}
                 {currentStep === 4 && (

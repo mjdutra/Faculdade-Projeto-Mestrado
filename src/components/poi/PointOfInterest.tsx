@@ -1,3 +1,10 @@
+export interface POIMedia {
+  type: "image" | "audio" | "video";
+  url: string;
+  caption?: string;
+}
+
+
 export interface PointOfInterest {
     id: string;
     title: string;
@@ -7,4 +14,5 @@ export interface PointOfInterest {
     timestamp: number;
     yaw: number;
     pitch: number;
+    media?: POIMedia;
   }

@@ -1,7 +1,7 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/firebase/config";
-import { addDoc, collection } from "firebase/firestore";
+import { addDoc, collection, Timestamp } from "firebase/firestore";
 import { uploadFile } from "@/services/cloudinary";
 import { QRCodeSVG } from "qrcode.react";
 import TopNav from "@/components/TopNav";
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Video, Star, Box, ChevronRight, ChevronLeft, Check, Plus, Trash2 } from "lucide-react";
+import { MapPin, Video, Star, Box, ChevronRight, ChevronLeft, Check, Plus, Trash2, Crosshair } from "lucide-react";
 import { PointOfInterest } from "@/components/poi/PointOfInterest";
 
 
@@ -177,20 +177,17 @@ const Submit = () => {
     const uploadedVideo = await uploadFile(videoFile);
     const uploadedModel = await uploadFile(glbFile);
 
-    const videoURL = uploadedVideo.secure_url;
-    const modelURL = uploadedModel.secure_url;
-
-    await addDoc(collection(db, "magnets"), {
-      title,
-      description,
-      location,
+    const docRef = await addDoc(collection(db, "magnets"), {
+      titulo: title,
+      descrição: description,
+      localização: location,
       points,
-      videoURL,
-      modelURL,
-      createdAt: new Date(),
+      videoURL: uploadedVideo.secure_url,
+      modelURL: uploadedModel.secure_url,
+      data: Timestamp.now(),
     });
-    
-    // setCreatedMagnetId(docRef.id);
+
+    setCreatedMagnetId(docRef.id);
     setSubmitted(true);
   } catch (error) {
     console.error(error);
@@ -494,37 +491,54 @@ const Submit = () => {
                               Ponto {index + 1}
                             </span>
                         
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removePoint(point.id)}
-                              className="text-gray-400 hover:text-black h-7 px-2"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  viewerRef.current?.seek(point.timestamp);
+                                  viewerRef.current?.lookAt(point.yaw, point.pitch);
+                                }}
+                                className="text-gray-400 hover:text-black h-7 px-2"
+                                title="Ir para este ponto no vídeo"
+                              >
+                                <Crosshair className="w-4 h-4" />
+                              </Button>
+
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removePoint(point.id)}
+                                className="text-gray-400 hover:text-black h-7 px-2"
+                                title="Remover"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
 
-                            <div>
-                              <Label>Título</Label>
-                              <Input
-                                value={point.title}
-                                onChange={(e) =>
-                                  updatePoint(point.id, "title", e.target.value)
-                                }
-                              />
-                            </div>
+                          <div>
+                            <Label>Título</Label>
+                            <Input
+                              value={point.title}
+                              onChange={(e) =>
+                                updatePoint(point.id, "title", e.target.value)
+                              }
+                            />
+                          </div>
 
-                            <div>
-                              <Label>Descrição</Label>
-                              <Textarea
-                                rows={2}
-                                value={point.description}
-                                onChange={(e) =>
-                                  updatePoint(point.id, "description", e.target.value)
-                                }
-                              />
-                            </div>
+                          <div>
+                            <Label>Descrição</Label>
+                            <Textarea
+                              rows={2}
+                              value={point.description}
+                              onChange={(e) =>
+                                updatePoint(point.id, "description", e.target.value)
+                              }
+                            />
+                          </div>
 
                             <div className="grid grid-cols-2 gap-3">
                               <div>

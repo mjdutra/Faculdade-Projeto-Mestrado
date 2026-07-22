@@ -1,26 +1,17 @@
 import { MagnetViewer } from "@/components/magnet/MagnetViewer";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { collection, getDocs, GeoPoint, Timestamp } from "firebase/firestore";
+import { collection, getDocs} from "firebase/firestore";
 import { db } from "@/firebase/config";
 import { Link } from "react-router-dom";
 import { LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 import TopNav from "@/components/TopNav";
 import MagnetPage from "@/components/magnet/MagnetPage";
+import type { Magnet } from "@/types/magnet";
 
 const PROJECT_TITLE = "PROJECT";
 const MAGNET_SIZE = 800;
 
-interface Magnet {
-  id: string;
-  titulo: string;
-  localização: string;
-  descrição: string;
-  modelURL: string;
-  videoURL: string;
-  coordenadas: GeoPoint;
-  data: Timestamp;
-}
 
 interface Position {
   xPercent: number;

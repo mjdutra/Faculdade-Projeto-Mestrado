@@ -1,12 +1,14 @@
 "use client";
 
 import { ThreeEvent } from "@react-three/fiber";
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, useCallback } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 
 import { PointOfInterest } from "@/components/poi/PointOfInterest";
+import { Hotspot } from "@/components/poi/Hotspot";
+import { yawPitchToVector, vectorToYawPitch } from "@/lib/spherical";
 
 export interface Video360ViewerHandle {
   play: () => void;
@@ -15,66 +17,43 @@ export interface Video360ViewerHandle {
   seek: (time: number) => void;
   setVolume: (value: number) => void;
   toggleMute: () => void;
-  lookAt: (yaw: number, pitch: number) => void; 
+  lookAt: (yaw: number, pitch: number) => void;
 }
 
 interface Video360ViewerProps {
   videoUrl: string;
   points: PointOfInterest[];
-  isAddingPOI:boolean;
+  isAddingPOI?: boolean;
   onTimeUpdate?: (time: number) => void;
   onDurationChange?: (duration: number) => void;
   onPlayingChange?: (isPlaying: boolean) => void;
   onVolumeChange?: (volume: number, muted: boolean) => void;
   onEnded?: () => void;
-  onPositionClick?: (position: {
-    yaw: number;
-    pitch: number;
-  }) => void;
+  onPositionClick?: (position: { yaw: number; pitch: number }) => void;
 }
 
 interface CameraControllerHandle {
   lookAt: (yaw: number, pitch: number) => void;
 }
 
-const CameraController = forwardRef<CameraControllerHandle, {}>(
-  function CameraController(_, ref) {
-    const { camera } = useThree();
-    const orbitRef = useRef<any>(null);
+const CameraController = forwardRef<CameraControllerHandle, {}>(function CameraController(_, ref) {
+  const { camera } = useThree();
+  const orbitRef = useRef<any>(null);
 
-    useImperativeHandle(ref, () => ({
-      lookAt: (yaw: number, pitch: number) => {
-        const yawRad = THREE.MathUtils.degToRad(yaw);
-        const pitchRad = THREE.MathUtils.degToRad(pitch);
+  useImperativeHandle(ref, () => ({
+    lookAt: (yaw: number, pitch: number) => {
+      const dir = yawPitchToVector(yaw, pitch, 1);
+      const distance = camera.position.length() || 0.1;
+      camera.position.copy(dir.clone().multiplyScalar(-distance));
+      camera.lookAt(0, 0, 0);
+      orbitRef.current?.update();
+    },
+  }));
 
-        // direção unitária, igual à usada em yawPitchToVector (radius = 1)
-        const dir = new THREE.Vector3(
-          Math.sin(yawRad) * Math.cos(pitchRad),
-          Math.sin(pitchRad),
-          Math.cos(yawRad) * Math.cos(pitchRad)
-        );
+  return <OrbitControls ref={orbitRef} enableZoom={false} enablePan={false} rotateSpeed={-0.4} />;
+});
 
-        const distance = camera.position.length() || 0.1;
 
-        // a câmara olha sempre para o alvo (0,0,0), logo tem de ficar
-        // posicionada do lado oposto à direção que queremos ver
-        camera.position.copy(dir.clone().multiplyScalar(-distance));
-        camera.lookAt(0, 0, 0);
-
-        orbitRef.current?.update();
-      },
-    }));
-
-    return (
-      <OrbitControls
-        ref={orbitRef}
-        enableZoom={false}
-        enablePan={false}
-        rotateSpeed={-0.4}
-      />
-    );
-  }
-);
 
 
 
@@ -83,11 +62,13 @@ function Sphere({
   points,
   isAddingPOI,
   onPositionClick,
+  onHoverChange,
 }: {
   video: HTMLVideoElement;
   points: PointOfInterest[];
   isAddingPOI: boolean;
   onPositionClick?: (position: { yaw: number; pitch: number }) => void;
+  onHoverChange?: (id: string, hovering: boolean) => void;
 }) {
   const texture = useMemo(() => {
     const t = new THREE.VideoTexture(video);
@@ -95,31 +76,12 @@ function Sphere({
     return t;
   }, [video]);
 
-  useEffect(() => {
-    return () => {
-      texture.dispose();
-    };
-  }, [texture]);
-
-  
-  const pointMeshRefs = useRef<Record<string, THREE.Mesh | null>>({});
+  useEffect(() => () => texture.dispose(), [texture]);
 
   useFrame(() => {
     if (video.readyState >= video.HAVE_CURRENT_DATA) {
       texture.needsUpdate = true;
     }
-
-    const t = video.currentTime;
-
-    points.forEach((point) => {
-      const mesh = pointMeshRefs.current[point.id];
-      if (!mesh) return;
-
-      const duration = point.duration ?? 5;
-      const visible = t >= point.timestamp && t <= point.timestamp + duration;
-
-      mesh.visible = visible;
-    });
   });
 
   const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
@@ -132,31 +94,14 @@ function Sphere({
   const handlePointerUp = (event: ThreeEvent<PointerEvent>) => {
     const down = pointerDownPos.current;
     pointerDownPos.current = null;
-
     if (!isAddingPOI || !onPositionClick || !down) return;
 
     const dx = event.clientX - down.x;
     const dy = event.clientY - down.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    if (Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD) return;
 
-    if (distance > DRAG_THRESHOLD) return;
-
-    const p = event.point.clone().normalize();
-    const yaw = THREE.MathUtils.radToDeg(Math.atan2(p.x, p.z));
-    const pitch = THREE.MathUtils.radToDeg(Math.asin(p.y));
-
-    onPositionClick({ yaw, pitch });
+    onPositionClick(vectorToYawPitch(event.point));
   };
-
-  function yawPitchToVector(yaw: number, pitch: number, radius: number) {
-    const yawRad = THREE.MathUtils.degToRad(yaw);
-    const pitchRad = THREE.MathUtils.degToRad(pitch);
-    return new THREE.Vector3(
-      radius * Math.sin(yawRad) * Math.cos(pitchRad),
-      radius * Math.sin(pitchRad),
-      radius * Math.cos(yawRad) * Math.cos(pitchRad)
-    );
-  }
 
   return (
     <>
@@ -165,154 +110,142 @@ function Sphere({
         <meshBasicMaterial map={texture} side={THREE.BackSide} toneMapped={false} />
       </mesh>
 
-      {points.map((point) => {
-        const pos = yawPitchToVector(point.yaw, point.pitch, 49.8);
-        return (
-          <mesh
-            key={point.id}
-            ref={(el) => {
-              pointMeshRefs.current[point.id] = el;
-            }}
-            position={pos}
-          >
-            <sphereGeometry args={[0.6, 16, 16]} />
-            <meshBasicMaterial color="red" />
-          </mesh>
-        );
-      })}
+      {points.map((point) => (
+        <Hotspot
+          key={point.id}
+          point={point}
+          video={video}
+          position={yawPitchToVector(point.yaw, point.pitch, 49.8)}
+          isAddingPOI={isAddingPOI}
+          onHoverChange={onHoverChange}
+        />
+      ))}
     </>
   );
 }
 
-const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(
-  function Video360Viewer(
-    {
-      videoUrl,
-      points,
-      isAddingPOI,
-      onTimeUpdate,
-      onDurationChange,
-      onPlayingChange,
-      onVolumeChange,
-      onEnded,
-      onPositionClick,
-    },
-    ref
-  ) {
-    const videoRef = useRef<HTMLVideoElement | null>(null);
-    const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
-    const cameraControllerRef = useRef<CameraControllerHandle>(null);
-
-    useEffect(() => {
-      const v = document.createElement("video");
-      v.src = videoUrl;
-      v.crossOrigin = "anonymous";
-      v.loop = true;
-      v.muted = true; 
-      v.playsInline = true;
-      v.autoplay = true;
-
-      videoRef.current = v;
-      setVideoEl(v);
-      v.play().catch(() => {});
-
-      return () => {
-        v.pause();
-        v.removeAttribute("src");
-        v.load();
-        videoRef.current = null;
-        setVideoEl(null);
-      };
-    }, [videoUrl]);
 
 
-    useEffect(() => {
-      const v = videoEl;
-      if (!v) return;
 
-      const handleTimeUpdate = () => onTimeUpdate?.(v.currentTime);
-      const handleLoadedMetadata = () => onDurationChange?.(v.duration || 0);
-      const handlePlay = () => onPlayingChange?.(true);
-      const handlePause = () => onPlayingChange?.(false);
-      const handleVolumeChange = () => onVolumeChange?.(v.volume, v.muted);
-      const handleEnded = () => onEnded?.();
 
-      v.addEventListener("timeupdate", handleTimeUpdate);
-      v.addEventListener("loadedmetadata", handleLoadedMetadata);
-      v.addEventListener("play", handlePlay);
-      v.addEventListener("pause", handlePause);
-      v.addEventListener("volumechange", handleVolumeChange);
-      v.addEventListener("ended", handleEnded);
+const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(function Video360Viewer(
+  { videoUrl, points, isAddingPOI = false, onTimeUpdate, onDurationChange, onPlayingChange, onVolumeChange, onEnded, onPositionClick },
+  ref
+) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
+  const cameraControllerRef = useRef<CameraControllerHandle>(null);
+  const [hoveredHotspotId, setHoveredHotspotId] = useState<string | null>(null);
 
-      return () => {
-        v.removeEventListener("timeupdate", handleTimeUpdate);
-        v.removeEventListener("loadedmetadata", handleLoadedMetadata);
-        v.removeEventListener("play", handlePlay);
-        v.removeEventListener("pause", handlePause);
-        v.removeEventListener("volumechange", handleVolumeChange);
-        v.removeEventListener("ended", handleEnded);
-      };
-    }, [videoEl, onTimeUpdate, onDurationChange, onPlayingChange, onVolumeChange, onEnded]);
 
- 
-    useImperativeHandle(
-      ref,
-      () => ({
-        play: () => {
-          videoRef.current?.play().catch(() => {});
-        },
-        pause: () => {
-          videoRef.current?.pause();
-        },
-        togglePlay: () => {
-          const v = videoRef.current;
-          if (!v) return;
-          if (v.paused) v.play().catch(() => {});
-          else v.pause();
-        },
-        seek: (time: number) => {
-          const v = videoRef.current;
-          if (!v) return;
-          v.currentTime = time;
-        },
-        setVolume: (value: number) => {
-          const v = videoRef.current;
-          if (!v) return;
-          v.volume = value;
-          v.muted = value === 0;
-        },
-        toggleMute: () => {
-          const v = videoRef.current;
-          if (!v) return;
-          v.muted = !v.muted;
-          if (!v.muted && v.volume === 0) v.volume = 1;
-        },
-        lookAt: (yaw: number, pitch: number) => {          
-          cameraControllerRef.current?.lookAt(yaw, pitch);
-        },
-      }),
-      []
-    );
 
-    return (
-      <div className="relative w-full h-full bg-black">
-        {videoEl && (
-          <Canvas
-            camera={{ position: [0, 0, 0.1] }}
-            style={{ width: "100%", height: "100%", cursor: isAddingPOI ? "crosshair" : "grab" }}
-          >
-            <Sphere
-              video={videoEl}
-              points={points}
-              isAddingPOI={isAddingPOI}
-              onPositionClick={onPositionClick}
-            />
-            <CameraController ref={cameraControllerRef} />
-          </Canvas>
-        )}
-      </div>
-    );
-  }
-);
+  useEffect(() => {
+    const v = document.createElement("video");
+    v.src = videoUrl;
+    v.crossOrigin = "anonymous";
+    v.loop = true;
+    v.muted = true;
+    v.playsInline = true;
+    v.autoplay = true;
+
+    videoRef.current = v;
+    setVideoEl(v);
+    v.play().catch(() => {});
+
+    return () => {
+      v.pause();
+      v.removeAttribute("src");
+      v.load();
+      videoRef.current = null;
+      setVideoEl(null);
+    };
+  }, [videoUrl]);
+
+  useEffect(() => {
+    const v = videoEl;
+    if (!v) return;
+
+    const handleTimeUpdate = () => onTimeUpdate?.(v.currentTime);
+    const handleLoadedMetadata = () => onDurationChange?.(v.duration || 0);
+    const handlePlay = () => onPlayingChange?.(true);
+    const handlePause = () => onPlayingChange?.(false);
+    const handleVolumeChange = () => onVolumeChange?.(v.volume, v.muted);
+    const handleEnded = () => onEnded?.();
+
+    v.addEventListener("timeupdate", handleTimeUpdate);
+    v.addEventListener("loadedmetadata", handleLoadedMetadata);
+    v.addEventListener("play", handlePlay);
+    v.addEventListener("pause", handlePause);
+    v.addEventListener("volumechange", handleVolumeChange);
+    v.addEventListener("ended", handleEnded);
+
+    return () => {
+      v.removeEventListener("timeupdate", handleTimeUpdate);
+      v.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      v.removeEventListener("play", handlePlay);
+      v.removeEventListener("pause", handlePause);
+      v.removeEventListener("volumechange", handleVolumeChange);
+      v.removeEventListener("ended", handleEnded);
+    };
+  }, [videoEl, onTimeUpdate, onDurationChange, onPlayingChange, onVolumeChange, onEnded]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      play: () => videoRef.current?.play().catch(() => {}),
+      pause: () => videoRef.current?.pause(),
+      togglePlay: () => {
+        const v = videoRef.current;
+        if (!v) return;
+        v.paused ? v.play().catch(() => {}) : v.pause();
+      },
+      seek: (time: number) => {
+        if (videoRef.current) videoRef.current.currentTime = time;
+      },
+      setVolume: (value: number) => {
+        const v = videoRef.current;
+        if (!v) return;
+        v.volume = value;
+        v.muted = value === 0;
+      },
+      toggleMute: () => {
+        const v = videoRef.current;
+        if (!v) return;
+        v.muted = !v.muted;
+        if (!v.muted && v.volume === 0) v.volume = 1;
+      },
+      lookAt: (yaw: number, pitch: number) => cameraControllerRef.current?.lookAt(yaw, pitch),
+    }),
+    []
+  );
+
+  const handleHoverChange = useCallback((id: string, hovering: boolean) => {
+    setHoveredHotspotId((prev) => {
+      if (hovering) return id;
+      return prev === id ? null : prev;
+    });
+  }, []);
+  
+  const cursor = hoveredHotspotId ? "pointer" : isAddingPOI ? "crosshair" : "grab";
+
+  return (
+    <div className="relative w-full h-full bg-black">
+      {videoEl && (
+        <Canvas
+          camera={{ position: [0, 0, 0.1] }}
+          style={{ width: "100%", height: "100%", cursor}}
+        >
+          <Sphere video={videoEl} 
+          points={points} 
+          isAddingPOI={isAddingPOI} 
+          onPositionClick={onPositionClick} 
+          onHoverChange={handleHoverChange} />
+
+          <CameraController ref={cameraControllerRef} />
+        </Canvas>
+      )}
+    </div>
+  );
+});
 
 export default Video360Viewer;

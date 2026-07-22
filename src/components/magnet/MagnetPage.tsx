@@ -3,6 +3,7 @@ import { X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Magnet } from "@/types/magnet";
 import VRExperience from "@/components/magnet/VRExperience";
+import { QRCodeSVG } from "qrcode.react";
 
 
 

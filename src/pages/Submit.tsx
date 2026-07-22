@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { db } from "@/firebase/config";
 import { addDoc, collection, Timestamp } from "firebase/firestore";
 import { uploadFile } from "@/services/cloudinary";
-import { QRCodeSVG } from "qrcode.react";
 import TopNav from "@/components/TopNav";
 import VideoControls from "@/components/video/VideoControls";
 import Viewer, { Video360ViewerHandle } from "@/components/video/Video360Viewer";
@@ -20,15 +19,16 @@ const STEPS = [
   { id: 2, label: "Vídeo 360º"},
   { id: 3, label: "Pontos de Interesse"},
   { id: 4, label: "Íman 3D"},
-  { id: 5, label: "QR Code"},
 ];
 
 const Submit = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const [createdMagnetId, setCreatedMagnetId] = useState<string | null>(null);
+
+
 
   // Step 1 – Info ---------------------------------------------------------------------------------
   const [title, setTitle] = useState("");
@@ -159,7 +159,7 @@ const Submit = () => {
   };
 
   const handleNext = () => {
-    if (currentStep < 5) setCurrentStep(currentStep + 1);
+    if (currentStep < 4) setCurrentStep(currentStep + 1);
   };
 
   const handlePrev = () => {
@@ -183,7 +183,7 @@ const Submit = () => {
     const uploadedVideo = await uploadFile(videoFile);
     const uploadedModel = await uploadFile(glbFile);
 
-    const docRef = await addDoc(collection(db, "magnets"), {
+    await addDoc(collection(db, "magnets"), {
       titulo: title,
       descrição: description,
       localização: location,
@@ -193,7 +193,6 @@ const Submit = () => {
       data: Timestamp.now(),
     });
 
-    setCreatedMagnetId(docRef.id);
     setSubmitted(true);
   } catch (error) {
     console.error(error);
@@ -203,7 +202,6 @@ const Submit = () => {
 };
 
   if (submitted) {
-    const qrValue = `${window.location.origin}/scan/${createdMagnetId}`;
 
     return (
       <div className="min-h-screen bg-white flex items-center justify-center px-4">
@@ -218,33 +216,48 @@ const Submit = () => {
             A sua experiência foi criada com sucesso.
           </p>
 
-          {createdMagnetId && (
-            <div className="flex flex-col items-center p-6 border border-black">
-              <QRCodeSVG value={qrValue} size={160} />
-              <p className="text-xs text-gray-400 mt-3 break-all">{qrValue}</p>
+          <div className="border border-gray-200 p-6 text-left space-y-4">
+            <div className="flex items-center gap-3">
+              <MapPin className="w-4 h-4 text-black shrink-0" />
+              <div>
+                <span className="font-medium text-gray-900">
+                  {title || "—"}
+                </span>
+                <span className="text-gray-400 ml-2">
+                  {location}
+                </span>
+              </div>
             </div>
-          )}
+
+            <div className="flex items-center gap-3">
+              <Video className="w-4 h-4 text-black shrink-0" />
+              <span>{videoFile?.name ?? "Sem vídeo"}</span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Star className="w-4 h-4 text-black shrink-0" />
+              <span>
+                {points.filter((p) => p.title).length} ponto(s) de interesse
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Box className="w-4 h-4 text-black shrink-0" />
+              <span>{glbFile?.name ?? "Sem ficheiro .glb"}</span>
+            </div>
+          </div>
 
           <Button
             onClick={() => {
-              setSubmitted(false);
-              setCreatedMagnetId(null);
-              setCurrentStep(1);
-              setTitle("");
-              setLocation("");
-              setDescription("");
-              setVideoFile(null);
-              setPoints([
-                {
-                  id: "1", title: "", description: "", 
-                  duration: 0,
-                  timestamp: 0,
-                  yaw: 0,
-                  pitch: 0
-                },
-              ]);
-              setGlbFile(null);
-            }}
+            setSubmitted(false);
+            setCurrentStep(1);
+            setTitle("");
+            setLocation("");
+            setDescription("");
+            setVideoFile(null);
+            setPoints([]);
+            setGlbFile(null);
+          }}
 
 
             className="bg-black text-white hover:bg-neutral-800 uppercase tracking-widest text-xs font-bold w-full">
@@ -656,12 +669,6 @@ const Submit = () => {
 
 
 
-
-
-
-
-
-
                 {/* ── Step 4: Magnet GLB ── */}
                 {currentStep === 4 && (
                   <div className="space-y-4">
@@ -697,48 +704,6 @@ const Submit = () => {
                     </div>
                   </div>
                 )}
-
-                {/* ── Step 5: QR Code ── */}
-                {currentStep === 5 && (
-                  <div className="space-y-6">
-                    <div className="p-5 bg-gray-50 rounded-lg space-y-3 text-sm text-gray-600">
-                      <div className="flex items-center gap-3">
-                        <MapPin className="w-4 h-4 text-black shrink-0" />
-                        <div>
-                          <span className="font-medium text-gray-900">{title || "—"}</span>
-                          <span className="text-gray-400 ml-2">{location}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Video className="w-4 h-4 text-black shrink-0" />
-                        <span>{videoFile ? videoFile.name : "Sem vídeo"}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Star className="w-4 h-4 text-black shrink-0" />
-                        <span>
-                          {points.filter((p) => p.title).length} ponto(s) de
-                          interesse
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Box className="w-4 h-4 text-black shrink-0" />
-                        <span>
-                          {glbFile ? glbFile.name : "Sem ficheiro .glb"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-center p-6 bg-gray-50 rounded-lg">
-                      <h3 className="font-bold uppercase tracking-widest text-xs mb-4 text-gray-800">
-                        QR Code
-                      </h3>
-                      <div className="w-36 h-36 bg-white border-2 border-gray-200 flex items-center justify-center shadow-inner rounded-lg" />
-                      <p className="text-sm text-gray-500 mt-3">
-                        O QR Code será gerado após a submissão
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Navegação */}
@@ -756,7 +721,7 @@ const Submit = () => {
                   <div />
                 )}                
                 
-                {currentStep < 5 ? (
+                {currentStep < 4 ? (
                   <Button
                     type="button"
                     onClick={handleNext}
@@ -769,7 +734,7 @@ const Submit = () => {
                 ) : (
                   <Button
                     type="button"
-                    onClick={handleSubmit}
+                    onClick={() => setShowConfirmation(true)}
                     disabled={isSubmitting}
                     className="rounded-none uppercase text-xs font-bold tracking-widest bg-neutral-700 text-white hover:bg-neutral-800"
                   >
@@ -791,6 +756,77 @@ const Submit = () => {
           </div>
         </div>
       </div>
+
+
+
+
+
+
+
+
+      {showConfirmation && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+
+          <div className="bg-white w-full max-w-lg p-8">
+
+            <h2 className="text-2xl font-black uppercase mb-6">
+              Confirmar submissão
+            </h2>
+
+            <div className="space-y-3 text-sm text-gray-600">
+
+              <div className="flex items-center gap-3">
+                <MapPin className="w-4 h-4 text-black shrink-0" />
+                <div>
+                  <span className="font-medium text-gray-900">
+                    {title || "—"}
+                  </span>
+                  <span className="text-gray-400 ml-2">
+                    {location}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Video className="w-4 h-4 text-black shrink-0" />
+                <span>{videoFile?.name ?? "Sem vídeo"}</span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Star className="w-4 h-4 text-black shrink-0" />
+                <span>
+                  {points.filter((p) => p.title).length} ponto(s) de interesse
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Box className="w-4 h-4 text-black shrink-0" />
+                <span>{glbFile?.name ?? "Sem ficheiro .glb"}</span>
+              </div>
+
+            </div>
+
+            <div className="flex justify-end gap-3 mt-8">
+              <Button
+                variant="outline"
+                onClick={() => setShowConfirmation(false)}
+              >
+                Cancelar
+              </Button>
+
+              <Button
+                onClick={async () => {
+                  setShowConfirmation(false);
+                  await handleSubmit();
+                }}
+              >
+                Confirmar
+              </Button>
+
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -10,6 +10,7 @@ export interface PointOfInterest {
     title: string;
     description: string; 
     duration: number;
+    permanent?: boolean;
     
     timestamp: number;
     yaw: number;

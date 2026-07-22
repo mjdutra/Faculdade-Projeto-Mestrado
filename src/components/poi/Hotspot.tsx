@@ -23,7 +23,10 @@ export function Hotspot({ point, position, video, onHoverChange }: HotspotProps)
     if (!mesh) return;
 
     const t = video.currentTime;
-    const isVisible = t >= point.timestamp && t <= point.timestamp + (point.duration ?? 5);
+    const isVisible = point.permanent
+  ? t >= point.timestamp
+  : t >= point.timestamp &&
+    t <= point.timestamp + (point.duration ?? 5);
 
     mesh.visible = isVisible;
     if (!isVisible && hovered) {

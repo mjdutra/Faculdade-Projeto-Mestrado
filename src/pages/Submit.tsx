@@ -139,12 +139,18 @@ const Submit = () => {
     setPoints(points.filter((p) => p.id !== id));
   };
 
-  const updatePoint = (
+  const updatePoint = <K extends keyof PointOfInterest>(
     id: string,
-    field: keyof PointOfInterest,
-    value: string | number
+    field: K,
+    value: PointOfInterest[K]
   ) => {
-    setPoints(points.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
+    setPoints((prev) =>
+      prev.map((point) =>
+        point.id === id
+          ? { ...point, [field]: value }
+          : point
+      )
+    );
   };
 
   const canProceed = () => {
@@ -547,25 +553,50 @@ const Submit = () => {
                                   {formatTime(point.timestamp)}
                                 </p>
                               </div>
+                          
 
-                              <div>
-                                <Label htmlFor={`duration-${point.id}`}>Duração (segundos)</Label>
-                                <Input
-                                  id={`duration-${point.id}`}
-                                  type="number"
-                                  min={1}
-                                  step={1}
-                                  value={point.duration}
+                              {!point.permanent && (
+                                <div>
+                                  <Label htmlFor={`duration-${point.id}`}>
+                                    Duração (segundos)
+                                  </Label>
+
+                                  <Input
+                                    id={`duration-${point.id}`}
+                                    type="number"
+                                    min={1}
+                                    step={1}
+                                    value={point.duration}
+                                    onChange={(e) =>
+                                      updatePoint(
+                                        point.id,
+                                        "duration",
+                                        Math.max(1, Number(e.target.value) || 1)
+                                      )
+                                    }
+                                    className="mt-1"
+                                  />
+                                </div>
+                              )}
+                              
+                              <div className="flex items-center gap-2">
+                                <input
+                                  id={`permanent-${point.id}`}
+                                  type="checkbox"
+                                  checked={point.permanent}
                                   onChange={(e) =>
-                                    updatePoint(
-                                      point.id,
-                                      "duration",
-                                      Math.max(1, Number(e.target.value) || 1)
-                                    )
+                                    updatePoint(point.id, "permanent", e.target.checked)
                                   }
-                                  className="mt-1"
                                 />
+
+                                <Label
+                                  htmlFor={`permanent-${point.id}`}
+                                  className="cursor-pointer"
+                                >
+                                  Mostrar durante todo o vídeo
+                                </Label>
                               </div>
+
                             </div>   
                           </div>
                         ))}
@@ -600,8 +631,10 @@ const Submit = () => {
                               </p>
 
                               <p className="text-sm text-gray-500">
-                                Duração: {point.duration}s
-                              </p>
+                              {point.permanent
+                                ? "Visível durante todo o vídeo"
+                                : `Duração: ${point.duration}s`}
+                            </p>
                             </div>
 
                             <Button

@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Magnet } from "@/types/magnet";
-import Video360Viewer, { Video360ViewerHandle } from "@/components/video/Video360Viewer";
-import VideoControls from "@/components/video/VideoControls";
+import VRExperience from "@/components/magnet/VRExperience";
 
 
 
@@ -13,33 +12,12 @@ interface Props {
 }
 
 export default function MagnetPage({ magnet, onClose }: Props) {
-  const viewerRef = useRef<Video360ViewerHandle>(null);
-  const playerContainerRef = useRef<HTMLDivElement>(null);
+  const [vrOpen, setVrOpen] = useState(false);
 
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
-    setIsPlaying(false);
-    setCurrentTime(0);
-    setDuration(0);
+    setVrOpen(false);
   }, [magnet?.id]);
-
-  useEffect(() => {
-    const handleFsChange = () => setIsFullscreen(document.fullscreenElement === playerContainerRef.current);
-    document.addEventListener("fullscreenchange", handleFsChange);
-    return () => document.removeEventListener("fullscreenchange", handleFsChange);
-  }, []);
-
-  const toggleFullscreen = () => {
-    const el = playerContainerRef.current;
-    if (!el) return;
-    document.fullscreenElement ? document.exitFullscreen().catch(() => {}) : el.requestFullscreen().catch(() => {});
-  };
 
   return (
     <>
@@ -65,37 +43,6 @@ export default function MagnetPage({ magnet, onClose }: Props) {
             </div>
 
             <div className="flex-1 overflow-y-auto p-8 py-10">
-              {magnet.videoURL && (
-                <div ref={playerContainerRef} className="relative w-full aspect-video bg-black border border-black mb-8">
-                  <Video360Viewer
-                    ref={viewerRef}
-                    videoUrl={magnet.videoURL}
-                    points={magnet.points ?? []}
-                    isAddingPOI={false}
-                    onTimeUpdate={setCurrentTime}
-                    onDurationChange={setDuration}
-                    onPlayingChange={setIsPlaying}
-                    onVolumeChange={(v, m) => {
-                      setVolume(v);
-                      setIsMuted(m);
-                    }}
-                  />
-                  <VideoControls
-                    isPlaying={isPlaying}
-                    currentTime={currentTime}
-                    duration={duration}
-                    volume={volume}
-                    isMuted={isMuted}
-                    isFullscreen={isFullscreen}
-                    onPlayPause={() => viewerRef.current?.togglePlay()}
-                    onSeek={(time) => viewerRef.current?.seek(time)}
-                    onVolumeChange={(value) => viewerRef.current?.setVolume(value)}
-                    onToggleMute={() => viewerRef.current?.toggleMute()}
-                    onToggleFullscreen={toggleFullscreen}
-                  />
-                </div>
-              )}
-
               <h2 className="text-3xl font-black uppercase mb-8">{magnet.titulo}</h2>
 
               <p className="text-sm text-gray-500">Localização</p>
@@ -104,13 +51,17 @@ export default function MagnetPage({ magnet, onClose }: Props) {
               <p className="text-sm text-gray-500">Descrição</p>
               <p className="mb-8">{magnet.descrição}</p>
 
+
               <div className="flex flex-col lg:flex-row gap-4">
                 <Button
                   type="button"
-                  className="w-full lg:flex-1 rounded-none uppercase text-xs font-bold tracking-widest bg-neutral-700 text-white hover:bg-neutral-800"
+                  disabled={!magnet.videoURL}
+                  onClick={() => setVrOpen(true)}
+                  className="w-full lg:flex-1 rounded-none uppercase text-xs font-bold tracking-widest bg-neutral-700 text-white hover:bg-neutral-800 disabled:opacity-50"
                 >
                   Enter in VR Experience
                 </Button>
+
                 <Button
                   type="button"
                   variant="outline"
@@ -130,6 +81,11 @@ export default function MagnetPage({ magnet, onClose }: Props) {
           </div>
         )}
       </aside>
+
+
+      {magnet && vrOpen && (
+        <VRExperience magnet={magnet} onClose={() => setVrOpen(false)} />
+      )}
     </>
   );
 }

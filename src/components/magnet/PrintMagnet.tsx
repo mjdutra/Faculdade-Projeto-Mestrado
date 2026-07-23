@@ -83,9 +83,6 @@ export default function PrintMagnet({ magnet, onClose }: Props) {
       <div className="flex justify-between items-center p-4 border-b border-black">
         <div>
           <h2 className="text-sm font-black uppercase">Print Magnet</h2>
-          <p className="text-xs text-gray-400">
-            Arraste o QR Code para escolher onde ficará gravado no íman.
-          </p>
         </div>
         <button onClick={onClose} aria-label="Fechar">
           <X size={24} />

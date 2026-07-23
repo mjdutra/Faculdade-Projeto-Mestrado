@@ -1,5 +1,5 @@
 import { MagnetViewer } from "@/components/magnet/MagnetViewer";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { collection, getDocs} from "firebase/firestore";
 import { db } from "@/firebase/config";
 import { Link } from "react-router-dom";

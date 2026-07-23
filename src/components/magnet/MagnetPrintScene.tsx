@@ -5,7 +5,6 @@ import { type ThreeEvent } from "@react-three/fiber";
 import { useGLTF, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { eulerFromNormal } from "@/lib/decal-utils";
-import { SkeletonUtils } from "three-stdlib";
 
 export interface DecalState {
   position: THREE.Vector3;

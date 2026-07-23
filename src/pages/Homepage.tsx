@@ -10,7 +10,17 @@ import MagnetPage from "@/components/magnet/MagnetPage";
 import type { Magnet } from "@/types/magnet";
 
 const PROJECT_TITLE = "PROJECT";
-const MAGNET_SIZE = 800;
+
+
+const getMagnetSize = () => {
+  const width = window.innerWidth;
+
+  if (width < 640) return 220;      // Telemóvel
+  if (width < 768) return 300;      // Tablet pequeno
+  if (width < 1024) return 420;     // Tablet
+  if (width < 1440) return 600;     // Portátil
+  return 800;                       // Monitor grande
+};
 
 
 interface Position {
@@ -28,10 +38,26 @@ const Homepage = () => {
   const [positions, setPositions] = useState<Record<string, Position>>({});
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [hasDragged, setHasDragged] = useState(false);
+  const [magnetSize, setMagnetSize] = useState(getMagnetSize());
 
   const [selectedMagnet, setSelectedMagnet] = useState<Magnet | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
+
+
+  useEffect(() => {
+    const handleResize = () => {
+      setMagnetSize(getMagnetSize());
+    };
+  
+    window.addEventListener("resize", handleResize);
+  
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+
 
   useEffect(() => {
     const fetchMagnets = async () => {
@@ -133,8 +159,8 @@ const Homepage = () => {
                 style={{
                   left: `${pos.xPercent}%`,
                   top: `${pos.yPercent}%`,
-                  width: MAGNET_SIZE,
-                  height: MAGNET_SIZE,
+                  width: magnetSize,
+                  height: magnetSize,
                   transform: "translate(-50%, -50%)",
                 }}
                 onMouseDown={(e) => {

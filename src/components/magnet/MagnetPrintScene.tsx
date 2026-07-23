@@ -5,6 +5,7 @@ import { type ThreeEvent } from "@react-three/fiber";
 import { useGLTF, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { eulerFromNormal } from "@/lib/decal-utils";
+import { SkeletonUtils } from "three-stdlib";
 
 export interface DecalState {
   position: THREE.Vector3;
@@ -26,7 +27,13 @@ export default function MagnetPrintScene({
   decal,
   onDecalChange,
 }: Props) {
+  
+  
+  
   const { scene } = useGLTF(modelUrl);
+  const clonedScene = useMemo(() => scene.clone(true), [scene]);
+
+
   const groupRef = useRef<THREE.Group>(null);
   const isDragging = useRef(false);
   const [orbitEnabled, setOrbitEnabled] = useState(true);
@@ -50,7 +57,7 @@ export default function MagnetPrintScene({
     onDecalChange({ position: localPoint, normal: localNormal });
   };
 
-  // Primeiro clique sobre o modelo (ainda sem QR colocado) posiciona-o de imediato.
+
   const handleModelPointerDown = (e: ThreeEvent<PointerEvent>) => {
     if (decal) return;
     e.stopPropagation();
@@ -96,11 +103,11 @@ export default function MagnetPrintScene({
       <directionalLight position={[3, 3, 3]} intensity={12} />
 
       <group ref={groupRef} scale={1.5}>
-        <primitive
-          object={scene}
-          onPointerDown={handleModelPointerDown}
-          onPointerMove={handleModelPointerMove}
-        />
+      <primitive
+        object={clonedScene}
+        onPointerDown={handleModelPointerDown}
+        onPointerMove={handleModelPointerMove}
+      />
 
         {decal && qrTexture && (
           <mesh

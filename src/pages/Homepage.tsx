@@ -131,6 +131,8 @@ const Homepage = () => {
     };
   }, [draggingId]);
 
+  console.log(magnets);
+
   return (
     <div className="min-h-screen w-full bg-white">
       <TopNav />

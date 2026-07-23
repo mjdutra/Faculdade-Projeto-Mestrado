@@ -7,7 +7,6 @@ import Homepage from "./pages/Homepage";
 import Mapa from "./pages/Mapa";
 import Submit from "./pages/Submit";
 import Scan from "./pages/Scan";
-import VRExperience from "./pages/VRExperience";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import TopNav from "@/components/TopNav";
@@ -26,7 +25,6 @@ const App = () => (
           <Route path="/mapa" element={<Mapa />} />
           <Route path="/scan" element={<Scan />} />
           <Route path="/submit" element={<Submit />} />
-          <Route path="/vr/:magnetId" element={<VRExperience />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

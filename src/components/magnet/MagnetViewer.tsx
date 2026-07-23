@@ -17,15 +17,17 @@ function Fallback() {
 export function MagnetViewer({
   modelUrl,
   className,
+  preserveDrawingBuffer = false,
 }: {
   modelUrl: string;
   className?: string;
+  preserveDrawingBuffer?: boolean;
 }) {
   return (
     <div className={className} style={{ width: "100%", height: "100%" }}>
       <Canvas 
       camera={{ position: [0, 0, 5], fov: 45 }} 
-      gl={{ antialias: true }}
+      gl={{ antialias: true, preserveDrawingBuffer }}
       style={{ background: "transparent" }}>
 
         <ambientLight intensity={0.5} />

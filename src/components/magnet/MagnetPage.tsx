@@ -1,11 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Magnet } from "@/types/magnet";
 import VRExperience from "@/components/magnet/VRExperience";
-import { QRCodeSVG } from "qrcode.react";
-
-
+import PrintMagnet from "@/components/magnet/PrintMagnet";
 
 interface Props {
   magnet: Magnet | null;
@@ -14,10 +12,11 @@ interface Props {
 
 export default function MagnetPage({ magnet, onClose }: Props) {
   const [vrOpen, setVrOpen] = useState(false);
-
+  const [printOpen, setPrintOpen] = useState(false);
 
   useEffect(() => {
     setVrOpen(false);
+    setPrintOpen(false);
   }, [magnet?.id]);
 
   return (
@@ -52,7 +51,6 @@ export default function MagnetPage({ magnet, onClose }: Props) {
               <p className="text-sm text-gray-500">Descrição</p>
               <p className="mb-8">{magnet.descrição}</p>
 
-
               <div className="flex flex-col lg:flex-row gap-4">
                 <Button
                   type="button"
@@ -66,7 +64,9 @@ export default function MagnetPage({ magnet, onClose }: Props) {
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full lg:flex-1 rounded-none border-black uppercase text-xs font-bold tracking-widest text-black hover:text-white hover:bg-neutral-800"
+                  disabled={!magnet.modelURL}
+                  onClick={() => setPrintOpen(true)}
+                  className="w-full lg:flex-1 rounded-none border-black uppercase text-xs font-bold tracking-widest text-black hover:text-white hover:bg-neutral-800 disabled:opacity-50"
                 >
                   Print Magnet
                 </Button>
@@ -83,9 +83,12 @@ export default function MagnetPage({ magnet, onClose }: Props) {
         )}
       </aside>
 
-
       {magnet && vrOpen && (
         <VRExperience magnet={magnet} onClose={() => setVrOpen(false)} />
+      )}
+
+      {magnet && printOpen && (
+        <PrintMagnet magnet={magnet} onClose={() => setPrintOpen(false)} />
       )}
     </>
   );

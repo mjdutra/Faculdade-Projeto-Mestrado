@@ -15,9 +15,9 @@ export interface Magnet {
   modelURL: string;
   videoURL: string;
   videoPublicId?: string;
-  videoResourceType?: string; 
+  videoResourceType?: string;
   modelPublicId?: string;
-  modelResourceType?: string; 
+  modelResourceType?: string;
   coordenadas?: GeoPoint;
   data?: Timestamp;
   points: PointOfInterest[];

@@ -185,12 +185,16 @@ const Submit = () => {
 
     await addDoc(collection(db, "magnets"), {
       titulo: title,
-      descrição: description,
       localização: location,
+      descrição: description,
       points,
       videoURL: uploadedVideo.secure_url,
+      videoPublicId: uploadedVideo.public_id,
+      videoResourceType: uploadedVideo.resource_type,
       modelURL: uploadedModel.secure_url,
-      data: Timestamp.now(),
+      modelPublicId: uploadedModel.public_id,
+      modelResourceType: uploadedModel.resource_type,
+      createdAt: new Date(),
     });
 
     setSubmitted(true);

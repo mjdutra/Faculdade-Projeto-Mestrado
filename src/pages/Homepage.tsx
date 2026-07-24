@@ -47,10 +47,18 @@ const Homepage = () => {
   const [hasDragged, setHasDragged] = useState(false);
   const [magnetSize, setMagnetSize] = useState(getMagnetSize());
 
+
   const [selectedMagnet, setSelectedMagnet] = useState<Magnet | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+useEffect(() => {
+  if (!toast) return;
+  const t = setTimeout(() => setToast(null), 4000);
+  return () => clearTimeout(t);
+}, [toast]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -232,26 +240,49 @@ const Homepage = () => {
 
       <MagnetPage
         magnet={selectedMagnet}
-        onClose={() => {
-
-          if (selectedMagnet) {
-            setPositions((prev) => ({
-              ...prev,
-              [selectedMagnet.id]: {
-                xPercent: 20 + centerBiasedRandom() * 60,
-                yPercent: prev[selectedMagnet.id].yPercent,
-              },
-            }));
-          }
-          
-          setSelectedMagnet(null);
-          navigate("/", {
-            replace: true,
-          });
-        }}
+          onClose={() => {
+            if (selectedMagnet) {
+              setPositions((prev) => ({
+                ...prev,
+                [selectedMagnet.id]: {
+                  xPercent: 20 + centerBiasedRandom() * 60,
+                  yPercent: prev[selectedMagnet.id]?.yPercent ?? 50,
+                },
+              }));
+            }
+            setSelectedMagnet(null);
+            navigate("/", { replace: true });
+          }}
+          onDeleted={(id, assetsFullyRemoved) => {
+            setMagnets((prev) => prev.filter((m) => m.id !== id));
+            setPositions((prev) => {
+              const { [id]: _removed, ...rest } = prev;
+              return rest;
+            });
+            setSelectedMagnet(null);
+            setToast({
+              type: assetsFullyRemoved ? "success" : "error",
+              message: assetsFullyRemoved
+                ? "Magnet eliminado com sucesso."
+                : "Magnet eliminado, mas alguns ficheiros associados não foram removidos.",
+            });
+            navigate("/", { replace: true });
+          }}
       />
+
+      {toast && (
+        <div
+          className={`fixed bottom-6 left-6 z-[100000] px-4 py-3 border text-sm font-medium ${
+            toast.type === "success"
+              ? "bg-black text-white border-black"
+              : "bg-red-600 text-white border-red-600"
+          }`}
+        >
+          {toast.message}
+        </div>
+      )}
+      
     </div>
-    
   );
 };
 

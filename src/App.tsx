@@ -10,7 +10,7 @@ import Scan from "./pages/Scan";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import TopNav from "@/components/TopNav";
-import Magnet from "./pages/Magnet";
+
 
 
 const queryClient = new QueryClient();
@@ -28,7 +28,6 @@ const App = () => (
           <Route path="/submit" element={<Submit />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<NotFound />} />
-          <Route path="/magnet/:id" element={<Magnet/>} />
         </Routes>
         <TopNav />
       </BrowserRouter>

@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import TopNav from "@/components/TopNav";
 import MagnetPage from "@/components/magnet/MagnetPage";
 import type { Magnet } from "@/types/magnet";
+import { useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const PROJECT_TITLE = "PROJECT";
 
@@ -32,7 +34,12 @@ interface Position {
 const centerBiasedRandom = () => (Math.random() + Math.random() + Math.random()) / 3;
 
 const Homepage = () => {
+
+  const [searchParams] = useSearchParams();
+  const magnetId = searchParams.get("magnet");
   const [magnets, setMagnets] = useState<Magnet[]>([]);
+  const navigate = useNavigate();
+
   const [loading, setLoading] = useState(true);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [positions, setPositions] = useState<Record<string, Position>>({});
@@ -58,7 +65,6 @@ const Homepage = () => {
   }, []);
 
 
-
   useEffect(() => {
     const fetchMagnets = async () => {
       try {
@@ -80,6 +86,18 @@ const Homepage = () => {
 
 
   useEffect(() => {
+    if (!magnetId || magnets.length === 0) return;
+
+    const magnet = magnets.find((m) => m.id === magnetId);
+
+    if (magnet) {
+      moveMagnetLeft(magnet.id);
+      setSelectedMagnet(magnet);
+    }
+  }, [magnetId, magnets]);
+
+
+  useEffect(() => {
     setPositions((prev) => {
       const next = { ...prev };
       magnets.forEach((magnet) => {
@@ -93,6 +111,8 @@ const Homepage = () => {
       return next;
     });
   }, [magnets]);
+
+
 
   // drag
   useEffect(() => {
@@ -131,7 +151,16 @@ const Homepage = () => {
     };
   }, [draggingId]);
 
-  console.log(magnets);
+
+  const moveMagnetLeft = (magnetId: string) => {
+  setPositions((prev) => ({
+    ...prev,
+    [magnetId]: {
+      ...prev[magnetId],
+      xPercent: 28, // ajusta este valor
+    },
+  }));
+};
 
   return (
     <div className="min-h-screen w-full bg-white">
@@ -174,6 +203,7 @@ const Homepage = () => {
                 onMouseLeave={() => setHoveredId(null)}
                 onClick={() => {
                   if (!hasDragged) {
+                    moveMagnetLeft(magnet.id);
                     setSelectedMagnet(magnet);
                   }
                 }}
@@ -202,7 +232,23 @@ const Homepage = () => {
 
       <MagnetPage
         magnet={selectedMagnet}
-        onClose={() => setSelectedMagnet(null)}
+        onClose={() => {
+
+          if (selectedMagnet) {
+            setPositions((prev) => ({
+              ...prev,
+              [selectedMagnet.id]: {
+                xPercent: 20 + centerBiasedRandom() * 60,
+                yPercent: prev[selectedMagnet.id].yPercent,
+              },
+            }));
+          }
+          
+          setSelectedMagnet(null);
+          navigate("/", {
+            replace: true,
+          });
+        }}
       />
     </div>
     

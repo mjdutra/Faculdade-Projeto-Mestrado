@@ -21,7 +21,7 @@ const APP_URL =
   (import.meta.env.VITE_APP_URL as string | undefined) || window.location.origin;
 
 export default function PrintMagnet({ magnet, onClose }: Props) {
-  const magnetUrl = `${APP_URL}/magnet/${magnet.id}`;
+  const magnetUrl = `${APP_URL}/?magnet=${magnet.id}`;
 
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
   const [qrTexture, setQrTexture] = useState<THREE.CanvasTexture | null>(null);
@@ -37,7 +37,7 @@ export default function PrintMagnet({ magnet, onClose }: Props) {
   const [scale, setScale] = useState(magnet.qrPlacement?.scale ?? 0.4);
   const [saving, setSaving] = useState(false);
 
-  // Constrói a textura three.js a partir do canvas do QR assim que este pinta.
+
   useEffect(() => {
     if (!qrCanvasRef.current) return;
     const texture = new THREE.CanvasTexture(qrCanvasRef.current);
@@ -70,7 +70,7 @@ export default function PrintMagnet({ magnet, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-[999999] bg-white flex flex-col">
-      {/* canvas invisível, usado só para gerar a textura do QR */}
+
       <QRCodeCanvas
         ref={qrCanvasRef}
         value={magnetUrl}

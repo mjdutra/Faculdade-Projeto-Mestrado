@@ -5,6 +5,9 @@ export interface QRPlacement {
   position: [number, number, number];
   normal: [number, number, number];
   scale: number;
+  mode?: "emboss" | "deboss";
+  reliefHeight?: number;
+  flipNormal?: boolean;
 }
 
 export interface Magnet {

@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
-import { QRCodeCanvas } from "qrcode.react";
 import { doc, updateDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { db } from "@/firebase/config";
 import { X, Check, RotateCcw } from "lucide-react";
 import type { Magnet } from "@/types/magnet";
 import MagnetPrintScene, { type DecalState } from "@/components/magnet/MagnetPrintScene";
+import type { ReliefMode } from "@/components/magnet/QRCode";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -23,9 +23,6 @@ const APP_URL =
 export default function PrintMagnet({ magnet, onClose }: Props) {
   const magnetUrl = `${APP_URL}/?magnet=${magnet.id}`;
 
-  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
-  const [qrTexture, setQrTexture] = useState<THREE.CanvasTexture | null>(null);
-
   const [decal, setDecal] = useState<DecalState | null>(
     magnet.qrPlacement
       ? {
@@ -35,15 +32,9 @@ export default function PrintMagnet({ magnet, onClose }: Props) {
       : null
   );
   const [scale, setScale] = useState(magnet.qrPlacement?.scale ?? 0.4);
+  const [mode, setMode] = useState<ReliefMode>(magnet.qrPlacement?.mode ?? "emboss");
+  const [reliefHeight, setReliefHeight] = useState(magnet.qrPlacement?.reliefHeight ?? 0.02);
   const [saving, setSaving] = useState(false);
-
-
-  useEffect(() => {
-    if (!qrCanvasRef.current) return;
-    const texture = new THREE.CanvasTexture(qrCanvasRef.current);
-    texture.needsUpdate = true;
-    setQrTexture(texture);
-  }, [magnetUrl]);
 
   const handleSave = async () => {
     if (!decal) {
@@ -57,6 +48,8 @@ export default function PrintMagnet({ magnet, onClose }: Props) {
           position: decal.position.toArray(),
           normal: decal.normal.toArray(),
           scale,
+          mode,
+          reliefHeight,
         },
       });
       toast.success("Posição do QR Code guardada.");
@@ -70,20 +63,8 @@ export default function PrintMagnet({ magnet, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-[999999] bg-white flex flex-col">
-
-      <QRCodeCanvas
-        ref={qrCanvasRef}
-        value={magnetUrl}
-        size={512}
-        level="M"
-        includeMargin
-        style={{ display: "none" }}
-      />
-
       <div className="flex justify-between items-center p-4 border-b border-black">
-        <div>
-          <h2 className="text-sm font-black uppercase">Print Magnet</h2>
-        </div>
+        <h2 className="text-sm font-black uppercase">Print Magnet</h2>
         <button onClick={onClose} aria-label="Fechar">
           <X size={24} />
         </button>
@@ -91,11 +72,13 @@ export default function PrintMagnet({ magnet, onClose }: Props) {
 
       <div className="flex-1 grid md:grid-cols-[1fr_320px] overflow-hidden">
         <div className="relative bg-neutral-50">
-          <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
+          <Canvas camera={{ position: [0, 0, 5], fov: 45 }} shadows>
             <MagnetPrintScene
               modelUrl={magnet.modelURL}
-              qrTexture={qrTexture}
+              qrValue={magnetUrl}
               scale={scale}
+              mode={mode}
+              reliefHeight={reliefHeight}
               decal={decal}
               onDecalChange={setDecal}
             />
@@ -122,9 +105,7 @@ export default function PrintMagnet({ magnet, onClose }: Props) {
           </div>
 
           <div>
-            <label className="text-sm text-gray-500 mb-2 block">
-              Tamanho do QR Code
-            </label>
+            <label className="text-sm text-gray-500 mb-2 block">Tamanho do QR Code</label>
             <input
               type="range"
               min={0.15}
@@ -132,6 +113,41 @@ export default function PrintMagnet({ magnet, onClose }: Props) {
               step={0.01}
               value={scale}
               onChange={(e) => setScale(Number(e.target.value))}
+              className="w-full"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm text-gray-500 mb-2 block">Relevo</label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={mode === "emboss" ? "default" : "outline"}
+                onClick={() => setMode("emboss")}
+                className="rounded-none uppercase text-xs font-bold tracking-widest"
+              >
+                Alto relevo
+              </Button>
+              <Button
+                type="button"
+                variant={mode === "deboss" ? "default" : "outline"}
+                onClick={() => setMode("deboss")}
+                className="rounded-none uppercase text-xs font-bold tracking-widest"
+              >
+                Baixo relevo
+              </Button>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm text-gray-500 mb-2 block">Profundidade do relevo</label>
+            <input
+              type="range"
+              min={0.005}
+              max={0.05}
+              step={0.001}
+              value={reliefHeight}
+              onChange={(e) => setReliefHeight(Number(e.target.value))}
               className="w-full"
             />
           </div>
@@ -160,8 +176,7 @@ export default function PrintMagnet({ magnet, onClose }: Props) {
           </div>
 
           <p className="text-xs text-gray-400">
-            Esta posição será usada para gerar o modelo 3D final com o QR
-            Code gravado, pronto a enviar para a impressora 3D.
+            O QR Code é gerado como geometria 3D (relevo), pronto para ser impresso numa única cor de filamento.
           </p>
         </div>
       </div>

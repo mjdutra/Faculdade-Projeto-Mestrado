@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { type ThreeEvent } from "@react-three/fiber";
 import { useGLTF, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
-import { eulerFromNormal } from "@/lib/decal-utils";
+import QRCodeRelief, { type ReliefMode } from "@/components/magnet/QRCode";
 
 export interface DecalState {
   position: THREE.Vector3;
@@ -13,30 +13,34 @@ export interface DecalState {
 
 interface Props {
   modelUrl: string;
-  qrTexture: THREE.Texture | null;
+  qrValue: string;
   scale: number;
+  mode: ReliefMode;
+  reliefHeight: number;
+  flipNormal?: boolean;
   decal: DecalState | null;
   onDecalChange: (decal: DecalState) => void;
 }
 
+
+const SURFACE_OFFSET = 0.01;
+
 export default function MagnetPrintScene({
   modelUrl,
-  qrTexture,
+  qrValue,
   scale,
+  mode,
+  reliefHeight,
+  flipNormal = false,
   decal,
   onDecalChange,
 }: Props) {
-  
-  
-  
   const { scene } = useGLTF(modelUrl);
   const clonedScene = useMemo(() => scene.clone(true), [scene]);
-
 
   const groupRef = useRef<THREE.Group>(null);
   const isDragging = useRef(false);
   const [orbitEnabled, setOrbitEnabled] = useState(true);
-
 
   const placeFromEvent = (e: ThreeEvent<PointerEvent>) => {
     if (!e.face || !groupRef.current) return;
@@ -56,14 +60,12 @@ export default function MagnetPrintScene({
     onDecalChange({ position: localPoint, normal: localNormal });
   };
 
-
   const handleModelPointerDown = (e: ThreeEvent<PointerEvent>) => {
     if (decal) return;
     e.stopPropagation();
     placeFromEvent(e);
   };
 
-  // Enquanto arrasta o sticker, segue a superfície por baixo do cursor.
   const handleModelPointerMove = (e: ThreeEvent<PointerEvent>) => {
     if (!isDragging.current) return;
     e.stopPropagation();
@@ -85,46 +87,49 @@ export default function MagnetPrintScene({
     return () => window.removeEventListener("pointerup", stopDrag);
   }, []);
 
-  const stickerRotation = useMemo(() => {
-    if (!decal) return new THREE.Euler();
-    return eulerFromNormal(decal.position, decal.normal);
-  }, [decal]);
 
+  const effectiveNormal = useMemo(() => {
+    if (!decal) return new THREE.Vector3(0, 0, 1);
+    return flipNormal ? decal.normal.clone().negate() : decal.normal.clone();
+  }, [decal, flipNormal]);
 
-  const stickerPosition = useMemo(() => {
+  const panelPosition = useMemo(() => {
     if (!decal) return new THREE.Vector3();
-    return decal.position.clone().add(decal.normal.clone().multiplyScalar(0.01));
-  }, [decal]);
+    return decal.position.clone().add(effectiveNormal.clone().multiplyScalar(SURFACE_OFFSET));
+  }, [decal, effectiveNormal]);
+
+
+  const panelQuaternion = useMemo(() => {
+    return new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(0, 0, 1),
+      effectiveNormal
+    );
+  }, [effectiveNormal]);
 
   return (
     <>
       <ambientLight intensity={0.6} />
-      <directionalLight position={[3, 3, 3]} intensity={12} />
+      <directionalLight position={[3, 3, 3]} intensity={12} castShadow />
 
       <group ref={groupRef} scale={1.5}>
-      <primitive
-        object={clonedScene}
-        onPointerDown={handleModelPointerDown}
-        onPointerMove={handleModelPointerMove}
-      />
+        <primitive
+          object={clonedScene}
+          onPointerDown={handleModelPointerDown}
+          onPointerMove={handleModelPointerMove}
+        />
 
-        {decal && qrTexture && (
-          <mesh
-            position={stickerPosition}
-            rotation={stickerRotation}
-            onPointerDown={startDrag}
-            onPointerOver={() => (document.body.style.cursor = "grab")}
-            onPointerOut={() => (document.body.style.cursor = "auto")}
-          >
-            <planeGeometry args={[scale, scale]} />
-            <meshBasicMaterial
-              map={qrTexture}
-              transparent
-              alphaTest={0.2}
-              depthWrite={false}
-              side={THREE.DoubleSide}
+        {decal && (
+          <group position={panelPosition} quaternion={panelQuaternion}>
+            <QRCodeRelief
+              value={qrValue}
+              size={scale}
+              mode={mode}
+              reliefHeight={reliefHeight}
+              onPointerDown={startDrag}
+              onPointerOver={() => (document.body.style.cursor = "grab")}
+              onPointerOut={() => (document.body.style.cursor = "auto")}
             />
-          </mesh>
+          </group>
         )}
       </group>
 

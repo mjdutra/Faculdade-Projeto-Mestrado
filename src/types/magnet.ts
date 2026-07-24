@@ -2,9 +2,9 @@ import { GeoPoint, Timestamp } from "firebase/firestore";
 import { PointOfInterest } from "@/components/poi/PointOfInterest";
 
 export interface QRPlacement {
-  position: [number, number, number]; 
+  position: [number, number, number];
   normal: [number, number, number];
-  scale: number; 
+  scale: number;
 }
 
 export interface Magnet {
@@ -14,6 +14,10 @@ export interface Magnet {
   descrição: string;
   modelURL: string;
   videoURL: string;
+  videoPublicId?: string;
+  videoResourceType?: string; 
+  modelPublicId?: string;
+  modelResourceType?: string; 
   coordenadas?: GeoPoint;
   data?: Timestamp;
   points: PointOfInterest[];

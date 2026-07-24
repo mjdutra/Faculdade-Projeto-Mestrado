@@ -2,14 +2,15 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 
+
 const firebaseConfig = {
-  apiKey: "AIzaSyDPcckqq_YnMhqxTqwuqCkPAJHkkAlowlc",
-  authDomain: "magnetstorage-8d096.firebaseapp.com",
-  projectId: "magnetstorage-8d096",
-  storageBucket: "magnetstorage-8d096.firebasestorage.app",
-  messagingSenderId: "230223874458",
-  appId: "1:230223874458:web:067041515578448ce05223",
-  measurementId: "G-Z815T8SS6L"
+  apiKey: import.meta.env.VITE_APIKEY,
+  authDomain: import.meta.env.VITE_AUTHDOMAIN,
+  projectId: import.meta.env.VITE_PROJECTID,
+  storageBucket: import.meta.env.VITE_STORAGEBUCKET,
+  messagingSenderId: import.meta.env.VITE_MESSAGINGSENDERID,
+  appId: import.meta.env.VITE_APPID,
+  measurementId: import.meta.env.VITE_MEASUREMENTID
 };
 
 const app = initializeApp(firebaseConfig);

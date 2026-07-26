@@ -282,12 +282,20 @@ const Submit = () => {
   return (
     <div className="min-h-screen flex flex-col"> 
       <TopNav />
-      <div className="
-        pt-28 
-        px-4
-        md:px-10 
-        h-[calc(100vh-4rem)] 
-        ">
+      <div
+        className="
+          pt-20
+          md:pt-24
+          lg:pt-24
+          xl:pt-20
+          2xl:pt-16
+          px-4
+          md:px-8
+          lg:px-10
+          pb-4
+          min-h-[calc(100vh-5rem)]
+        "
+      >
         <div className="w-full h-full border border-black">
           <div className="grid md:grid-cols-2 h-full">
 

@@ -1,6 +1,7 @@
 import { PointOfInterest, POIMedia } from "./PointOfInterest";
+import { ReactElement } from "react";
 
-type MediaRenderer = (media: POIMedia, key: string) => JSX.Element;
+type MediaRenderer = (media: POIMedia, key: string) => ReactElement;
 
 const MEDIA_RENDERERS: Record<POIMedia["type"], MediaRenderer> = {
   image: (media, key) => (

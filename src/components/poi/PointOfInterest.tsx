@@ -15,5 +15,5 @@ export interface PointOfInterest {
     timestamp: number;
     yaw: number;
     pitch: number;
-    media?: POIMedia;
+    media?: POIMedia[];
   }

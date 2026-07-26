@@ -21,6 +21,73 @@ const STEPS = [
   { id: 4, label: "Íman 3D"},
 ];
 
+
+
+function AspectFitBox({
+  ratio = 16 / 9,
+  className = "",
+  children,
+}: {
+  ratio?: number;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const outerRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const el = outerRef.current;
+    if (!el) return;
+
+    const compute = () => {
+      const { width: cw, height: ch } = el.getBoundingClientRect();
+      if (cw <= 0 || ch <= 0) return;
+
+      let width = cw;
+      let height = width / ratio;
+
+      if (height > ch) {
+        height = ch;
+        width = height * ratio;
+      }
+
+      // Evita re-renders desnecessários com diferenças mínimas
+      setSize((prev) => {
+        if (Math.abs(prev.width - width) < 0.5 && Math.abs(prev.height - height) < 0.5) {
+          return prev;
+        }
+        return { width, height };
+      });
+    };
+
+    compute();
+
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ratio]);
+
+  return (
+    <div
+      ref={outerRef}
+      className={`w-full h-full flex items-center justify-center ${className}`}
+    >
+      <div
+        style={{
+          width: size.width || "100%",
+          height: size.height || "100%",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+
+
+
+
 const Submit = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -112,7 +179,6 @@ const Submit = () => {
       .toString()
       .padStart(2,"0")}`;
   };
-
 
 
 
@@ -293,116 +359,94 @@ const Submit = () => {
           md:px-8
           lg:px-10
           pb-4
-          min-h-[calc(100vh-5rem)]
+          h-[calc(100vh-5rem)]
+          md:h-[calc(100vh-6rem)]
+          lg:h-[calc(100vh-6rem)]
+          xl:h-[calc(100vh-5rem)]
+          2xl:h-[calc(100vh-4rem)]
         "
       >
-        <div className="w-full h-full border border-black">
-          <div className="grid md:grid-cols-2 h-full">
+        <div className="w-full h-full border border-black overflow-hidden">
+          <div className="grid grid-rows-[45vh_1fr] sm:grid-rows-[50vh_1fr] md:grid-rows-none md:grid-cols-2 h-full">
 
-            <div className="relative h-full">
-              {currentStep === 3 && videoObjectUrl && (
-                <div className="
-                absolute
-                top-0
-                left-0
-                w-full
+            <div className="h-full min-h-0 flex flex-col">
             
-                h-[35%]
-                sm:h-[40%]
-                md:h-[50%]
-                lg:h-[60%]
-            
-                p-4
-                md:p-8
-                flex
-                justify-center
-                md:justify-start
-                items-start">
+              <div className="flex-1 min-h-0 relative">
+                {currentStep === 3 && videoObjectUrl && (
+                  <div className="absolute inset-0 p-1">
+                    <AspectFitBox ratio={16 / 9}>
+                      <div
+                        ref={playerContainerRef}
+                        className="relative w-full h-full overflow-hidden border bg-black"
+                      >
+                        <Viewer
+                          ref={viewerRef}
+                          points={points}
+                          videoUrl={videoObjectUrl}
+                          isAddingPOI={isAddingPOI}
+                          onPositionClick={(position) => {
+                            const newPoint: PointOfInterest = {
+                              id: Date.now().toString(),
+                              title: "",
+                              description: "",
+                              timestamp: currentTime,
+                              duration: 5,
+                              yaw: position.yaw,
+                              pitch: position.pitch,
+                            };
+                            setPoints((prev) => [...prev, newPoint]);
+                          }}
+                          onTimeUpdate={setCurrentTime}
+                          onDurationChange={setDuration}
+                          onPlayingChange={setIsPlaying}
+                          onVolumeChange={(v, m) => {
+                            setVolume(v);
+                            setIsMuted(m);
+                          }}
+                        />
 
-                <div
-                  ref={playerContainerRef}
-                  className="
-                    relative
-                    h-full
-                    aspect-video
-                    max-w-full
-                    max-h-full
-                    overflow-hidden
-                    border
-                    bg-black"
-                >
-                  <Viewer
-                    ref={viewerRef}
-                    points={points}
-                    videoUrl={videoObjectUrl}
-                    isAddingPOI={isAddingPOI}
-
-                    onPositionClick={(position) => {
-                      const newPoint: PointOfInterest = {
-                        id: Date.now().toString(),
-                        title: "",
-                        description: "",
-                        timestamp: currentTime,
-                        duration: 5, // valor por omissão, em segundos
-                        yaw: position.yaw,
-                        pitch: position.pitch,
-                      };
-                    
-                      setPoints(prev => [...prev, newPoint]);
-                    }}
-
-                    onTimeUpdate={setCurrentTime}
-                    onDurationChange={setDuration}
-                    onPlayingChange={setIsPlaying}
-                    onVolumeChange={(v, m) => {
-                      setVolume(v);
-                      setIsMuted(m);
-                    }}
-                  />
-
-                  <VideoControls
-                    isPlaying={isPlaying}
-                    currentTime={currentTime}
-                    duration={duration}
-                    volume={volume}
-                    isMuted={isMuted}
-                    isFullscreen={isFullscreen}
-                    onPlayPause={() => viewerRef.current?.togglePlay()}
-                    onSeek={(time) => viewerRef.current?.seek(time)}
-                    onVolumeChange={(value) => viewerRef.current?.setVolume(value)}
-                    onToggleMute={() => viewerRef.current?.toggleMute()}
-                    onToggleFullscreen={toggleFullscreen}
-                  />
-                </div>
+                        <VideoControls
+                          isPlaying={isPlaying}
+                          currentTime={currentTime}
+                          duration={duration}
+                          volume={volume}
+                          isMuted={isMuted}
+                          isFullscreen={isFullscreen}
+                          onPlayPause={() => viewerRef.current?.togglePlay()}
+                          onSeek={(time) => viewerRef.current?.seek(time)}
+                          onVolumeChange={(value) => viewerRef.current?.setVolume(value)}
+                          onToggleMute={() => viewerRef.current?.toggleMute()}
+                          onToggleFullscreen={toggleFullscreen}
+                        />
+                      </div>
+                    </AspectFitBox>
+                  </div>
+                )}
               </div>
-              )}
 
-              <h1 className="relative
-                md:absolute 
-                left-10 
-                bottom-8 
-                bg-white 
-                px-3 
-                md:px-0
-                py-0 
-                text-[2.5rem]
-                md:text-[4rem]
-                lg:text-[7.2rem] 
-
-                font-black 
-                uppercase 
-                leading-[0.85] 
-                tracking-tight 
-                text-black 
-                translate-y-6 
-                md:translate-y-12
-                tracking-tight
-                ">
-                Nova
-                <br />
-                Experiência
-              </h1>
+              <div className="shrink-0 bg-white px-4 sm:px-6 md:px-8 pt-2 pb-3 md:pb-4">
+                <h1
+                  className="
+                    text-[2rem]
+                    sm:text-[2.5rem]
+                    md:text-[4rem]
+                    lg:text-[6rem]
+                    xl:text-[7rem]
+                    font-black
+                    uppercase
+                    leading-[0.85]
+                    tracking-tight
+                    text-black
+                  "
+                >
+                  Nova
+                  <br />
+                  Experiência
+                </h1>
+              </div>
             </div>
+
+
 
             <div className="h-full p-8 md:p-10 flex flex-col overflow-y-auto">
               <div className="flex-1">

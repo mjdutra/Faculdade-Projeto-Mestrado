@@ -282,7 +282,12 @@ const Submit = () => {
   return (
     <div className="min-h-screen flex flex-col"> 
       <TopNav />
-      <div className="pt-28 h-[calc(100vh-4rem)] md:px-10 md:h-[calc(100vh-7rem)] px-4">
+      <div className="
+        pt-28 
+        px-4
+        md:px-10 
+        h-[calc(100vh-4rem)] 
+        ">
         <div className="w-full h-full border border-black">
           <div className="grid md:grid-cols-2 h-full">
 
@@ -375,7 +380,8 @@ const Submit = () => {
                 text-[2.5rem]
                 md:text-[4rem]
                 lg:text-[6rem] 
-                xl:text-[10rem]
+                xl:text-[7rem] 
+                2xl:text-[10rem]
                 font-black 
                 uppercase 
                 leading-[0.85] 

@@ -387,9 +387,8 @@ const Submit = () => {
                 py-0 
                 text-[2.5rem]
                 md:text-[4rem]
-                lg:text-[6rem] 
-                xl:text-[7rem] 
-                2xl:text-[10rem]
+                lg:text-[7.2rem] 
+
                 font-black 
                 uppercase 
                 leading-[0.85] 

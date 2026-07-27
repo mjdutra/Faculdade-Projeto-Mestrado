@@ -30,6 +30,10 @@ const Grid = () => {
   const [durations, setDurations] = useState<Record<string, number>>({});
   const [selectedMagnet, setSelectedMagnet] = useState<Magnet | null>(null);
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [cursor, setCursor] = useState({
+  x: window.innerWidth * 0.8,
+  y: window.innerHeight / 2,
+});
 
 
   useEffect(() => {
@@ -75,28 +79,26 @@ useEffect(() => {
     [magnets, hoveredId]
   );
 
-    useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    useEffect(() => { const handleMouseMove = (e: MouseEvent) => {
+        setCursor({
+            x: e.clientX,
+            y: e.clientY,
+        });
+
         let hovered: string | null = null;
-
         for (const magnet of magnets) {
-        const row = rowRefs.current[magnet.id];
+            const row = rowRefs.current[magnet.id];
+            if (!row) continue;
 
-        if (!row) continue;
-
-        const rect = row.getBoundingClientRect();
-
-        if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+            const rect = row.getBoundingClientRect();
+            if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
             hovered = magnet.id;
             break;
+            }
         }
-        }
-
         setHoveredId((prev) => (prev === hovered ? prev : hovered));
     };
-
     window.addEventListener("mousemove", handleMouseMove);
-
     return () => {
         window.removeEventListener("mousemove", handleMouseMove);
     };
@@ -105,9 +107,7 @@ useEffect(() => {
 
     useEffect(() => {
         const clearHover = () => setHoveredId(null);
-
         document.addEventListener("mouseleave", clearHover);
-
         return () => {
             document.removeEventListener("mouseleave", clearHover);
         };
@@ -189,7 +189,7 @@ useEffect(() => {
 
         {/* Preview do íman */}
         <div
-            className={`fixed top-1/2 right-0 -translate-y-1/2
+            className={`fixed top-1/2 -translate-y-1/2
             w-[450px] h-[450px]
             lg:w-[550px] lg:h-[550px]
             xl:w-[650px] xl:h-[650px]
@@ -197,6 +197,11 @@ useEffect(() => {
             pointer-events-none transition-all duration-500 ease-out z-50 ${
                 hoveredMagnet ? "opacity-100 scale-100" : "opacity-0 scale-90"
             }`}
+            style={{
+                left: cursor.x,
+                top: cursor.y,
+                transform: "translate(-40%, -50%)",
+            }}
         >
             {hoveredMagnet && (
             <MagnetViewer

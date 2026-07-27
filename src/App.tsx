@@ -10,6 +10,7 @@ import Scan from "./pages/Scan";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import TopNav from "@/components/TopNav";
+import Grid from "./pages/Grid";
 
 
 
@@ -23,6 +24,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Homepage />} />
+          <Route path="/grid" element={<Grid />} />
           <Route path="/mapa" element={<Mapa />} />
           <Route path="/scan" element={<Scan />} />
           <Route path="/submit" element={<Submit />} />

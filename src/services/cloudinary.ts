@@ -7,6 +7,8 @@ const CLOUD_NAME = import.meta.env.VITE_CLOUDINARYCLOUDNAME;
 const functions = getFunctions(app);
 const deleteCloudinaryAssetFn = httpsCallable(functions, "deleteCloudinaryAsset");
 
+const DELETE_ASSET_URL = "https://us-central1-magnetstorage-8d096.cloudfunctions.net/deleteCloudinaryAsset";
+
 export async function uploadFile(file: File) {
   const formData = new FormData();
   formData.append("file", file);
@@ -27,7 +29,15 @@ export async function uploadFile(file: File) {
   return response.json();
 }
 
-export async function deleteAsset(publicId: string, resourceType: string = "image") {
-  const result = await deleteCloudinaryAssetFn({ publicId, resourceType });
-  return result.data;
+export async function deleteAsset(publicId: string, resourceType: string): Promise<void> {
+  const response = await fetch(DELETE_ASSET_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ publicId, resourceType }),
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error ?? `Failed to delete asset (${response.status})`);
+  }
 }

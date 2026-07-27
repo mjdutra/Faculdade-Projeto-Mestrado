@@ -22,7 +22,7 @@ export async function deleteMagnet(magnet: Magnet): Promise<DeleteMagnetResult> 
 
   if (!assetsFullyRemoved) {
     console.error(
-      "Alguns ficheiros associados não foram eliminados do Cloudinary:",
+      // "Alguns ficheiros associados não foram eliminados do Cloudinary:",
       results.filter((r) => r.status === "rejected")
     );
   }

@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MapPin, Video, Star, Box, ChevronRight, ChevronLeft, Check, Plus, Trash2, Crosshair } from "lucide-react";
 import { PointOfInterest } from "@/components/poi/PointOfInterest";
-
+import { compressVideoUnderLimit, resetFFmpeg } from "@/lib/ffmpegClient";
 
 const STEPS = [
   { id: 1, label: "Informação"},
@@ -110,6 +110,52 @@ const Submit = () => {
 
   // Step 2 – Video ---------------------------------------------------------------------------------
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [optimizationProgress, setOptimizationProgress] = useState(0);
+  const [optimizationBitrateKbps, setOptimizationBitrateKbps] = useState<number | null>(null);
+  const [optimizationScaled, setOptimizationScaled] = useState(false);
+
+
+  const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0] || null;
+      e.target.value = ""; // permite reselecionar o mesmo ficheiro depois
+
+      if (!file) return;
+
+      if (file.size <= MAX_VIDEO_SIZE) {
+        setVideoFile(file);
+        return;
+      }
+
+      setIsOptimizing(true);
+      setOptimizationProgress(0);
+      setOptimizationScaled(false);
+
+      try {
+        const compressed = await compressVideoUnderLimit(file, {
+          maxSizeBytes: MAX_VIDEO_SIZE,
+          onProgress: ({ targetBitrateKbps, scaled, ratio }) => {
+            setOptimizationBitrateKbps(targetBitrateKbps);
+            setOptimizationScaled(scaled);
+            setOptimizationProgress(Math.round(ratio * 100));
+          },
+        });
+        setVideoFile(compressed);
+      } catch (err) {
+        console.error(err);
+        alert("Não foi possível comprimir o vídeo. Tente outro ficheiro.");
+      } finally {
+        setIsOptimizing(false);
+      }
+    };
+
+  const cancelOptimization = () => {
+    resetFFmpeg();
+    setIsOptimizing(false);
+    setOptimizationProgress(0);
+  };
 
   const videoObjectUrl = useMemo(() => {
     if (!videoFile) return null;
@@ -121,6 +167,9 @@ const Submit = () => {
       if (videoObjectUrl) URL.revokeObjectURL(videoObjectUrl);
     };
   }, [videoObjectUrl]);
+
+
+
 
   // ── Player 360º (usado no Step 3)
   const viewerRef = useRef<Video360ViewerHandle>(null);
@@ -220,6 +269,7 @@ const Submit = () => {
   };
 
   const canProceed = () => {
+    if (isOptimizing) return false;
     if (currentStep === 1) return title && location && description;
     return true;
   };
@@ -367,13 +417,13 @@ const Submit = () => {
         "
       >
         <div className="w-full h-full border border-black overflow-hidden">
-          <div className="grid grid-rows-[45vh_1fr] sm:grid-rows-[50vh_1fr] md:grid-rows-none md:grid-cols-2 h-full">
+          <div className="grid grid-rows-[55vh_1fr] sm:grid-rows-[60vh_1fr] md:grid-rows-none md:grid-cols-2 h-full">
 
             <div className="h-full min-h-0 flex flex-col">
-            
+
               <div className="flex-1 min-h-0 relative">
                 {currentStep === 3 && videoObjectUrl && (
-                  <div className="absolute inset-0 p-1">
+                  <div className="absolute inset-0 p-2 sm:p-3 md:p-4 lg:p-5">
                     <AspectFitBox ratio={16 / 9}>
                       <div
                         ref={playerContainerRef}
@@ -497,6 +547,18 @@ const Submit = () => {
                   </div>
                 )}
 
+
+
+
+
+
+
+
+
+
+
+
+
                 {/* ── Step 2: Video ── */}
                 {currentStep === 2 && (
                   <div>
@@ -506,24 +568,56 @@ const Submit = () => {
                         type="file"
                         id="video"
                         accept="video/*"
-                        onChange={(e) =>
-                          setVideoFile(e.target.files?.[0] || null)
-                        }
+                        onChange={handleVideoSelect}
+                        disabled={isOptimizing}
                         className="hidden"
                       />
-                      <label htmlFor="video" className="cursor-pointer">
+                      <label
+                        htmlFor="video"
+                        className={isOptimizing ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      >
                         <Button variant="outline" asChild>
                           <span>Escolher Vídeo</span>
                         </Button>
                       </label>
-                      {videoFile ? (
+
+                      {isOptimizing && (
+                        <div className="mt-4 p-3 bg-gray-50 text-sm text-gray-700 space-y-2 text-left">
+                          <div className="flex justify-between text-xs uppercase tracking-widest font-bold text-gray-500">
+                           <span>
+                              A comprimir vídeo
+                              {optimizationBitrateKbps
+                                ? ` (~${optimizationBitrateKbps} kbps${optimizationScaled ? ", resolução reduzida" : ""})`
+                                : ""}
+                            </span>
+                            <span>{optimizationProgress}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-gray-200 overflow-hidden">
+                            <div
+                              className="h-full bg-neutral-700 transition-all"
+                              style={{ width: `${optimizationProgress}%` }}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={cancelOptimization}
+                            className="text-xs text-gray-400 hover:text-black underline"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      )}
+
+                      {!isOptimizing && videoFile && (
                         <div className="mt-4 p-3 bg-gray-50 text-sm text-gray-700">
                           <span className="font-medium">{videoFile.name}</span>
                           <span className="text-gray-500 ml-2">
                             ({(videoFile.size / 1024 / 1024).toFixed(2)} MB)
                           </span>
                         </div>
-                      ) : (
+                      )}
+
+                      {!isOptimizing && !videoFile && (
                         <p className="text-sm text-gray-400 mt-2">
                           Arraste ou clique para selecionar um ficheiro de vídeo
                         </p>
@@ -531,6 +625,11 @@ const Submit = () => {
                     </div>
                   </div>
                 )}
+
+
+
+
+
 
                 {/* ── Step 3: Points of interest ── */}
                 {currentStep === 3 && (
@@ -730,6 +829,8 @@ const Submit = () => {
 
 
 
+
+
                 {/* ── Step 4: Magnet GLB ── */}
                 {currentStep === 4 && (
                   <div className="space-y-4">
@@ -766,6 +867,15 @@ const Submit = () => {
                   </div>
                 )}
               </div>
+
+
+
+
+
+
+
+
+
 
               {/* Navegação */}
               <div className="flex justify-end gap-3 pt-8">

@@ -70,14 +70,46 @@ const Grid = () => {
         };
     };
 
-useEffect(() => {
-  magnets.forEach(loadVideoDuration);
-}, [magnets]);
+    useEffect(() => {
+    magnets.forEach(loadVideoDuration);
+    }, [magnets]);
 
-  const hoveredMagnet = useMemo(
-    () => magnets.find((m) => m.id === hoveredId) ?? null,
-    [magnets, hoveredId]
-  );
+    const hoveredMagnet = useMemo(
+        () => magnets.find((m) => m.id === hoveredId) ?? null,
+        [magnets, hoveredId]
+    );
+
+
+    useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+        for (const magnet of magnets) {
+        const row = rowRefs.current[magnet.id];
+        if (!row) continue;
+
+        const rect = row.getBoundingClientRect();
+
+        if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+            setSelectedMagnet(magnet);
+            break;
+        }
+        }
+    };
+    window.addEventListener("click", handleClick);
+    return () => {
+        window.removeEventListener("click", handleClick);
+    };
+    }, [magnets]);
+
+
+    useEffect(() => {
+        document.body.style.cursor = hoveredMagnet ? "pointer" : "default";
+
+        return () => {
+            document.body.style.cursor = "default";
+        };
+        }, [hoveredMagnet]);
+
+
 
     useEffect(() => { const handleMouseMove = (e: MouseEvent) => {
         setCursor({
@@ -146,9 +178,11 @@ useEffect(() => {
                     ref={(el) => {
                         rowRefs.current[magnet.id] = el;
                     }}
-                    onClick={() => setSelectedMagnet(magnet)}
                     className="w-full border-b cursor-pointer transition-colors duration-300"
                 >
+
+
+
                     <div className="grid grid-cols-12 items-center px-4 md:px-10 py-6 md:py-8">
                     <span
                         className={`col-span-1 text-xs font-bold tracking-widest transition-colors duration-300 ${
@@ -200,7 +234,7 @@ useEffect(() => {
             style={{
                 left: cursor.x,
                 top: cursor.y,
-                transform: "translate(-40%, -50%)",
+                transform: "translate(-20%, -50%)",
             }}
         >
             {hoveredMagnet && (

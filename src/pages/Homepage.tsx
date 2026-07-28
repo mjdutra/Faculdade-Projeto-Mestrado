@@ -1,6 +1,6 @@
 import { MagnetViewer } from "@/components/magnet/MagnetViewer";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { collection, getDocs} from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/config";
 import { Link } from "react-router-dom";
 import { LayoutGrid } from "lucide-react";
@@ -13,27 +13,23 @@ import { useNavigate } from "react-router-dom";
 
 const PROJECT_TITLE = "PROJECT";
 
-
 const getMagnetSize = () => {
   const width = window.innerWidth;
 
-  if (width < 640) return 300;      // Telemóvel
-  if (width < 768) return 600;      // Tablet
-  if (width < 1024) return 600;     // Tablet
-  return 1050;                      // Portátil
+  if (width < 640) return 300;
+  if (width < 768) return 600;
+  if (width < 1024) return 600;
+  return 1050;
 };
-
 
 interface Position {
   xPercent: number;
   yPercent: number;
 }
 
-
 const centerBiasedRandom = () => (Math.random() + Math.random() + Math.random()) / 3;
 
 const Homepage = () => {
-
   const [searchParams] = useSearchParams();
   const magnetId = searchParams.get("magnet");
   const [magnets, setMagnets] = useState<Magnet[]>([]);
@@ -43,44 +39,45 @@ const Homepage = () => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [positions, setPositions] = useState<Record<string, Position>>({});
   const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [hasDragged, setHasDragged] = useState(false);
   const [magnetSize, setMagnetSize] = useState(getMagnetSize());
-
 
   const [selectedMagnet, setSelectedMagnet] = useState<Magnet | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Fonte única de verdade para "houve movimento real nesta interação"
+  // (arrasto 2D OU rotação do OrbitControls). Usa-se um ref, e não state,
+  // porque tem de ser lido de forma síncrona no onClick — que dispara
+  // ainda dentro do mesmo ciclo pointerdown→pointermove→pointerup→click,
+  // sem tempo para um re-render refletir um state atualizado.
+  const suppressClickRef = useRef(false);
+
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [aspectRatios, setAspectRatios] = useState<Record<string, number>>({});
 
   const handleAspectChange = useCallback((magnetId: string, aspect: number) => {
-  setAspectRatios((prev) =>
-    prev[magnetId] === aspect
-      ? prev
-      : { ...prev, [magnetId]: aspect }
+    setAspectRatios((prev) =>
+      prev[magnetId] === aspect ? prev : { ...prev, [magnetId]: aspect }
     );
   }, []);
 
-
-useEffect(() => {
-  if (!toast) return;
-  const t = setTimeout(() => setToast(null), 4000);
-  return () => clearTimeout(t);
-}, [toast]);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   useEffect(() => {
     const handleResize = () => {
       setMagnetSize(getMagnetSize());
     };
-  
+
     window.addEventListener("resize", handleResize);
-  
+
     return () => {
       window.removeEventListener("resize", handleResize);
     };
   }, []);
-
 
   useEffect(() => {
     const fetchMagnets = async () => {
@@ -101,7 +98,6 @@ useEffect(() => {
     fetchMagnets();
   }, []);
 
-
   useEffect(() => {
     if (!magnetId || magnets.length === 0) return;
 
@@ -112,7 +108,6 @@ useEffect(() => {
       setSelectedMagnet(magnet);
     }
   }, [magnetId, magnets]);
-
 
   useEffect(() => {
     setPositions((prev) => {
@@ -129,14 +124,13 @@ useEffect(() => {
     });
   }, [magnets]);
 
-
-
-  // drag
+  // Arrasto 2D do íman (reposicionar dentro da Homepage)
   useEffect(() => {
     if (!draggingId) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      setHasDragged(true);
+      suppressClickRef.current = true;
+
       const container = containerRef.current;
       if (!container) return;
       const rect = container.getBoundingClientRect();
@@ -154,10 +148,6 @@ useEffect(() => {
 
     const handleMouseUp = () => {
       setDraggingId(null);
-    
-      setTimeout(() => {
-        setHasDragged(false);
-      }, 0);
     };
 
     window.addEventListener("mousemove", handleMouseMove);
@@ -168,16 +158,15 @@ useEffect(() => {
     };
   }, [draggingId]);
 
-
   const moveMagnetLeft = (magnetId: string) => {
-  setPositions((prev) => ({
-    ...prev,
-    [magnetId]: {
-      ...prev[magnetId],
-      xPercent: 28, // ajusta este valor
-    },
-  }));
-};
+    setPositions((prev) => ({
+      ...prev,
+      [magnetId]: {
+        ...prev[magnetId],
+        xPercent: 28,
+      },
+    }));
+  };
 
   return (
     <div className="min-h-screen w-full bg-white">
@@ -214,15 +203,20 @@ useEffect(() => {
                   transform: "translate(-50%, -50%)",
                   transition: "width 200ms ease",
                 }}
-                // onMouseDown={(e) => {
-                //   e.preventDefault();
-                //   setHasDragged(false);
-                //   setDraggingId(magnet.id);
-                // }}
+                // Reset da flag de supressão no início de QUALQUER gesto
+                // (sobre o modelo ou sobre a zona transparente). Este
+                // handler dispara sempre, porque o pointerdown nativo do
+                // <canvas> sobe por bubbling até este wrapper — mas só
+                // depois do raycast do R3F e do OrbitControls já terem
+                // processado o evento ao nível do <canvas>, o que não
+                // interfere com este reset.
+                onPointerDown={() => {
+                  suppressClickRef.current = false;
+                }}
                 onMouseEnter={() => setHoveredId(magnet.id)}
                 onMouseLeave={() => setHoveredId(null)}
                 onClick={() => {
-                  if (!hasDragged) {
+                  if (!suppressClickRef.current) {
                     moveMagnetLeft(magnet.id);
                     setSelectedMagnet(magnet);
                   }
@@ -233,9 +227,12 @@ useEffect(() => {
                   onAspectChange={(a) => handleAspectChange(magnet.id, a)}
                   onModelPointerDown={(e) => {
                     e.nativeEvent?.preventDefault?.();
-                    setHasDragged(false);
                     setDraggingId(magnet.id);
                   }}
+                  onRotate={() => {
+                    suppressClickRef.current = true;
+                  }}
+                  orbitEnabled={draggingId !== magnet.id}
                 />
 
                 {hoveredId === magnet.id && !isDragging && (
@@ -257,37 +254,36 @@ useEffect(() => {
         <LayoutGrid className="w-5 h-5" strokeWidth={2} />
       </Link>
 
-
       <MagnetPage
         magnet={selectedMagnet}
-          onClose={() => {
-            if (selectedMagnet) {
-              setPositions((prev) => ({
-                ...prev,
-                [selectedMagnet.id]: {
-                  xPercent: 20 + centerBiasedRandom() * 60,
-                  yPercent: prev[selectedMagnet.id]?.yPercent ?? 50,
-                },
-              }));
-            }
-            setSelectedMagnet(null);
-            navigate("/", { replace: true });
-          }}
-          onDeleted={(id, assetsFullyRemoved) => {
-            setMagnets((prev) => prev.filter((m) => m.id !== id));
-            setPositions((prev) => {
-              const { [id]: _removed, ...rest } = prev;
-              return rest;
-            });
-            setSelectedMagnet(null);
-            setToast({
-              type: assetsFullyRemoved ? "success" : "error",
-              message: assetsFullyRemoved
-                ? "Magnet eliminado com sucesso."
-                : "Magnet eliminado, mas alguns ficheiros associados não foram removidos.",
-            });
-            navigate("/", { replace: true });
-          }}
+        onClose={() => {
+          if (selectedMagnet) {
+            setPositions((prev) => ({
+              ...prev,
+              [selectedMagnet.id]: {
+                xPercent: 20 + centerBiasedRandom() * 60,
+                yPercent: prev[selectedMagnet.id]?.yPercent ?? 50,
+              },
+            }));
+          }
+          setSelectedMagnet(null);
+          navigate("/", { replace: true });
+        }}
+        onDeleted={(id, assetsFullyRemoved) => {
+          setMagnets((prev) => prev.filter((m) => m.id !== id));
+          setPositions((prev) => {
+            const { [id]: _removed, ...rest } = prev;
+            return rest;
+          });
+          setSelectedMagnet(null);
+          setToast({
+            type: assetsFullyRemoved ? "success" : "error",
+            message: assetsFullyRemoved
+              ? "Magnet eliminado com sucesso."
+              : "Magnet eliminado, mas alguns ficheiros associados não foram removidos.",
+          });
+          navigate("/", { replace: true });
+        }}
       />
 
       {toast && (
@@ -301,7 +297,6 @@ useEffect(() => {
           {toast.message}
         </div>
       )}
-      
     </div>
   );
 };

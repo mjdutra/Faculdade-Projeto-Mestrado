@@ -42,8 +42,6 @@ function MagnetModel({
 }: {
   url: string;
   onBounds: (bounds: ModelBounds) => void;
-  /** Só é chamado quando o pointerdown acerta na geometria real do
-   * modelo (hit de raycast) — nunca para cliques no fundo transparente. */
   onModelPointerDown?: (e: ThreeEvent<PointerEvent>) => void;
 }) {
   const { scene } = useGLTF(url);
@@ -74,10 +72,9 @@ function MagnetModel({
     <primitive
       object={clonedScene}
       onPointerDown={(e: ThreeEvent<PointerEvent>) => {
-        // e.stopPropagation() só impede a propagação dentro da árvore de
-        // eventos do R3F (ex.: objetos atrás no raio) — não interfere com
-        // os listeners nativos do OrbitControls no elemento <canvas>.
-        e.stopPropagation();
+        // Sem stopPropagation(): evita a captura implícita do ponteiro no
+        // <canvas>, que quebra o mouseenter/mouseleave do tooltip e
+        // compete com o OrbitControls (ver correções anteriores).
         onModelPointerDown?.(e);
       }}
     />
@@ -94,12 +91,22 @@ export function MagnetViewer({
   preserveDrawingBuffer = false,
   onAspectChange,
   onModelPointerDown,
+  onRotate,
+  orbitEnabled = true,
 }: {
   modelUrl: string;
   className?: string;
   preserveDrawingBuffer?: boolean;
   onAspectChange?: (aspect: number) => void;
+  /** Só dispara quando o raycast acerta na geometria do GLB. */
   onModelPointerDown?: (e: ThreeEvent<PointerEvent>) => void;
+  /** Dispara quando o OrbitControls aplica uma rotação REAL (drag
+   * processado) — não dispara num simples clique parado. Usado pelo
+   * consumidor para distinguir "rodou" de "clicou". */
+  onRotate?: () => void;
+  /** Desativa o OrbitControls enquanto o consumidor está a arrastar a
+   * posição do íman, para os dois gestos não disputarem o mesmo drag. */
+  orbitEnabled?: boolean;
 }) {
   const [radius, setRadius] = useState(1.5);
 
@@ -130,10 +137,12 @@ export function MagnetViewer({
         </Suspense>
         <CameraRig radius={radius} />
         <OrbitControls
+          enabled={orbitEnabled}
           enableZoom={false}
           rotateSpeed={0.4}
           enableDamping
           dampingFactor={0.08}
+          onChange={onRotate}
         />
       </Canvas>
     </div>

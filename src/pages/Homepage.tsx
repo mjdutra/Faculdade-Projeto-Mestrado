@@ -29,6 +29,15 @@ interface Position {
 
 const centerBiasedRandom = () => (Math.random() + Math.random() + Math.random()) / 3;
 
+
+// ── Parâmetros da colisão suave entre ímanes ─────────────────────────
+const REPEL_PADDING = 2; // encolhe o raio de cada íman
+const BUFFER_FACTOR = 0.1; // zona de interação 
+const STRENGTH = 0.06; // fração do overlap corrigida por frame
+
+
+
+
 const Homepage = () => {
   const [searchParams] = useSearchParams();
   const magnetId = searchParams.get("magnet");
@@ -55,6 +64,27 @@ const Homepage = () => {
       prev[magnetId] === aspect ? prev : { ...prev, [magnetId]: aspect }
     );
   }, []);
+
+  // ── Refs loop de colisão ────────────────────────
+  const positionsRef = useRef<Record<string, Position>>({});
+  useEffect(() => {
+    positionsRef.current = positions;
+  }, [positions]);
+
+  const draggingIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    draggingIdRef.current = draggingId;
+  }, [draggingId]);
+
+  const magnetSizeRef = useRef(magnetSize);
+  useEffect(() => {
+    magnetSizeRef.current = magnetSize;
+  }, [magnetSize]);
+
+  const aspectRatiosRef = useRef<Record<string, number>>({});
+  useEffect(() => {
+    aspectRatiosRef.current = aspectRatios;
+  }, [aspectRatios]);
 
   useEffect(() => {
     if (!toast) return;
@@ -152,6 +182,139 @@ const Homepage = () => {
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [draggingId]);
+
+  // ── Colisão entre ímanes ────────────────────────────────────
+  useEffect(() => {
+    if (magnets.length < 2) return;
+
+    let frameId: number;
+
+    const step = () => {
+      const container = containerRef.current;
+      if (!container) {
+        frameId = requestAnimationFrame(step);
+        return;
+      }
+
+      const rect = container.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        frameId = requestAnimationFrame(step);
+        return;
+      }
+
+      const ids = magnets.map((m) => m.id);
+      const currentPositions = positionsRef.current;
+      const size = magnetSizeRef.current;
+      const aspects = aspectRatiosRef.current;
+      const draggedId = draggingIdRef.current;
+
+
+      const centers: Record<string, { x: number; y: number }> = {};
+      const radii: Record<string, number> = {};
+
+      ids.forEach((id) => {
+        const pos = currentPositions[id];
+        if (!pos) return;
+
+        const aspect = aspects[id] ?? 1;
+        const width = size * aspect;
+        const height = size;
+
+        centers[id] = {
+          x: (pos.xPercent / 100) * rect.width,
+          y: (pos.yPercent / 100) * rect.height,
+        };
+        radii[id] = ((width + height) / 4) * REPEL_PADDING;
+      });
+
+      const corrections: Record<string, { x: number; y: number }> = {};
+      ids.forEach((id) => (corrections[id] = { x: 0, y: 0 }));
+
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = i + 1; j < ids.length; j++) {
+          const a = ids[i];
+          const b = ids[j];
+          const ca = centers[a];
+          const cb = centers[b];
+          if (!ca || !cb) continue;
+
+          let dx = cb.x - ca.x;
+          let dy = cb.y - ca.y;
+          let dist = Math.sqrt(dx * dx + dy * dy);
+
+          const combined = radii[a] + radii[b];
+          const bufferZone = combined * BUFFER_FACTOR;
+          if (dist >= bufferZone) continue;
+
+          // Dois ímanes exatamente sobrepostos: escolhe um eixo estável
+          // para não dividir por zero.
+          if (dist < 0.001) {
+            dx = 1;
+            dy = 0;
+            dist = 0.001;
+          }
+
+          const nx = dx / dist;
+          const ny = dy / dist;
+
+          // 0 na fronteira da zona de interação, 1 em sobreposição total —
+          // a força diminui à medida que a distância aumenta.
+          const overlapRatio = 1 - dist / bufferZone;
+          const pushAmount = overlapRatio * combined * STRENGTH;
+
+          const isADragging = draggedId === a;
+          const isBDragging = draggedId === b;
+
+          if (isADragging && !isBDragging) {
+            // "a" está a ser controlado pelo rato; só "b" é empurrado.
+            corrections[b].x += nx * pushAmount * 2;
+            corrections[b].y += ny * pushAmount * 2;
+          } else if (isBDragging && !isADragging) {
+            corrections[a].x -= nx * pushAmount * 2;
+            corrections[a].y -= ny * pushAmount * 2;
+          } else if (!isADragging && !isBDragging) {
+            corrections[a].x -= nx * pushAmount;
+            corrections[a].y -= ny * pushAmount;
+            corrections[b].x += nx * pushAmount;
+            corrections[b].y += ny * pushAmount;
+          }
+        }
+      }
+
+      const hasCorrection = Object.values(corrections).some(
+        (c) => Math.abs(c.x) > 0.01 || Math.abs(c.y) > 0.01
+      );
+
+      if (hasCorrection) {
+        setPositions((prev) => {
+          const next = { ...prev };
+          ids.forEach((id) => {
+            if (id === draggedId) return; // o utilizador controla-o diretamente
+            const correction = corrections[id];
+            const pos = prev[id];
+            if (!pos || (!correction.x && !correction.y)) return;
+
+            next[id] = {
+              xPercent: Math.min(
+                98,
+                Math.max(2, pos.xPercent + (correction.x / rect.width) * 100)
+              ),
+              yPercent: Math.min(
+                96,
+                Math.max(4, pos.yPercent + (correction.y / rect.height) * 100)
+              ),
+            };
+          });
+          return next;
+        });
+      }
+
+      frameId = requestAnimationFrame(step);
+    };
+
+    frameId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frameId);
+  }, [magnets]);
 
   const moveMagnetLeft = (magnetId: string) => {
     setPositions((prev) => ({

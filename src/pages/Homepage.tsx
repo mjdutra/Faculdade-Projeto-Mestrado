@@ -45,11 +45,6 @@ const Homepage = () => {
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Fonte única de verdade para "houve movimento real nesta interação"
-  // (arrasto 2D OU rotação do OrbitControls). Usa-se um ref, e não state,
-  // porque tem de ser lido de forma síncrona no onClick — que dispara
-  // ainda dentro do mesmo ciclo pointerdown→pointermove→pointerup→click,
-  // sem tempo para um re-render refletir um state atualizado.
   const suppressClickRef = useRef(false);
 
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -203,13 +198,7 @@ const Homepage = () => {
                   transform: "translate(-50%, -50%)",
                   transition: "width 200ms ease",
                 }}
-                // Reset da flag de supressão no início de QUALQUER gesto
-                // (sobre o modelo ou sobre a zona transparente). Este
-                // handler dispara sempre, porque o pointerdown nativo do
-                // <canvas> sobe por bubbling até este wrapper — mas só
-                // depois do raycast do R3F e do OrbitControls já terem
-                // processado o evento ao nível do <canvas>, o que não
-                // interfere com este reset.
+
                 onPointerDown={() => {
                   suppressClickRef.current = false;
                 }}

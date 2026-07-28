@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useGLTF, OrbitControls, Environment } from "@react-three/drei";
 import * as THREE from "three";
@@ -10,9 +10,20 @@ interface ModelBounds {
   radius: number;
 }
 
-function CameraRig({ radius }: { radius: number }) {
+function CameraRig({
+  radius,
+  controlsRef,
+}: {
+  radius: number;
+  controlsRef: React.RefObject<any>;
+}) {
   const camera = useThree((state) => state.camera);
   const size = useThree((state) => state.size);
+
+  // Uma vez true, deixamos de repor a posição/rotação por defeito — só
+  // reajustamos a distância. É esta flag que garante que a orientação do
+  // utilizador nunca é reposta automaticamente.
+  const hasFramedOnce = useRef(false);
 
   useEffect(() => {
     if (!(camera instanceof THREE.PerspectiveCamera)) return;
@@ -25,12 +36,34 @@ function CameraRig({ radius }: { radius: number }) {
     const distanceForWidth = radius / Math.sin(fovX / 2);
     const distance = Math.max(distanceForHeight, distanceForWidth) * FIT_PADDING;
 
-    camera.position.set(0, 0, distance);
     camera.near = Math.max(distance - radius * 4, 0.01);
     camera.far = distance + radius * 4;
-    camera.lookAt(0, 0, 0);
+
+    if (!hasFramedOnce.current) {
+      // Primeiro enquadramento: ainda não existe orientação do utilizador,
+      // por isso partimos de uma vista frontal por defeito.
+      camera.position.set(0, 0, distance);
+      camera.lookAt(0, 0, 0);
+      hasFramedOnce.current = true;
+    } else {
+      // Já existe uma orientação (por defeito ou definida pelo utilizador
+      // via arrasto no OrbitControls). Preservamo-la: mantemos a direção
+      // do vetor posição e só reescalamos o comprimento para a nova
+      // distância de enquadramento — a rotação acumulada não é tocada.
+      const currentDistance = camera.position.length();
+      if (currentDistance > 1e-4) {
+        camera.position.multiplyScalar(distance / currentDistance);
+      } else {
+        camera.position.set(0, 0, distance);
+      }
+    }
+
     camera.updateProjectionMatrix();
-  }, [camera, size, radius]);
+    // Ressincroniza o estado interno (esférico) do OrbitControls com a
+    // posição que acabámos de ajustar, para não haver um "salto" no
+    // próximo arrasto.
+    controlsRef.current?.update();
+  }, [camera, size, radius, controlsRef]);
 
   return null;
 }
@@ -72,9 +105,6 @@ function MagnetModel({
     <primitive
       object={clonedScene}
       onPointerDown={(e: ThreeEvent<PointerEvent>) => {
-        // Sem stopPropagation(): evita a captura implícita do ponteiro no
-        // <canvas>, que quebra o mouseenter/mouseleave do tooltip e
-        // compete com o OrbitControls (ver correções anteriores).
         onModelPointerDown?.(e);
       }}
     />
@@ -98,17 +128,12 @@ export function MagnetViewer({
   className?: string;
   preserveDrawingBuffer?: boolean;
   onAspectChange?: (aspect: number) => void;
-  /** Só dispara quando o raycast acerta na geometria do GLB. */
   onModelPointerDown?: (e: ThreeEvent<PointerEvent>) => void;
-  /** Dispara quando o OrbitControls aplica uma rotação REAL (drag
-   * processado) — não dispara num simples clique parado. Usado pelo
-   * consumidor para distinguir "rodou" de "clicou". */
   onRotate?: () => void;
-  /** Desativa o OrbitControls enquanto o consumidor está a arrastar a
-   * posição do íman, para os dois gestos não disputarem o mesmo drag. */
   orbitEnabled?: boolean;
 }) {
   const [radius, setRadius] = useState(1.5);
+  const controlsRef = useRef<any>(null);
 
   const handleBounds = useCallback(
     ({ aspect, radius }: ModelBounds) => {
@@ -135,8 +160,9 @@ export function MagnetViewer({
           />
           <Environment preset="city" />
         </Suspense>
-        <CameraRig radius={radius} />
+        <CameraRig radius={radius} controlsRef={controlsRef} />
         <OrbitControls
+          ref={controlsRef}
           enabled={orbitEnabled}
           enableZoom={false}
           rotateSpeed={0.4}

@@ -235,13 +235,13 @@ const Homepage = () => {
                   orbitEnabled={draggingId !== magnet.id}
                 />
 
-                {hoveredId === magnet.id && !isDragging && (
+                {/* {hoveredId === magnet.id && !isDragging && (
                   <div className="absolute top-full left-1/2 -translate-x-1/2 p-3 rounded-lg bg-white shadow-lg border text-sm text-gray-800 pointer-events-none z-30">
                     <p className="font-semibold">{magnet.titulo}</p>
                     <p className="text-gray-500">{magnet.localização}</p>
                     <p className="mt-1 text-gray-600">{magnet.descrição}</p>
                   </div>
-                )}
+                )} */}
               </div>
             );
           })}

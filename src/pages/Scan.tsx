@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, CheckCircle, XCircle, ScanLine } from "lucide-react";
+import { CheckCircle, XCircle} from "lucide-react";
 
 import { useEffect } from "react";
 import { Html5Qrcode } from "html5-qrcode";
@@ -33,10 +33,11 @@ useEffect(() => {
       qrScanner.current = new Html5Qrcode("reader");
 
       await qrScanner.current.start(
-        { facingMode: "environment" },
+        { facingMode: "environment"},
         {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
+          fps: 30,
+          qrbox: { width: 300, height: 400 },
+
         },
         async (decodedText) => {
           setScanResult(decodedText);

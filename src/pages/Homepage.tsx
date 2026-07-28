@@ -214,11 +214,11 @@ useEffect(() => {
                   transform: "translate(-50%, -50%)",
                   transition: "width 200ms ease",
                 }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  setHasDragged(false);
-                  setDraggingId(magnet.id);
-                }}
+                // onMouseDown={(e) => {
+                //   e.preventDefault();
+                //   setHasDragged(false);
+                //   setDraggingId(magnet.id);
+                // }}
                 onMouseEnter={() => setHoveredId(magnet.id)}
                 onMouseLeave={() => setHoveredId(null)}
                 onClick={() => {
@@ -231,6 +231,11 @@ useEffect(() => {
                 <MagnetViewer
                   modelUrl={magnet.modelURL}
                   onAspectChange={(a) => handleAspectChange(magnet.id, a)}
+                  onModelPointerDown={(e) => {
+                    e.nativeEvent?.preventDefault?.();
+                    setHasDragged(false);
+                    setDraggingId(magnet.id);
+                  }}
                 />
 
                 {hoveredId === magnet.id && !isDragging && (

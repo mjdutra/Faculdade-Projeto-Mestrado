@@ -1,5 +1,5 @@
 import { MagnetViewer } from "@/components/magnet/MagnetViewer";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { collection, getDocs} from "firebase/firestore";
 import { db } from "@/firebase/config";
 import { Link } from "react-router-dom";
@@ -17,11 +17,10 @@ const PROJECT_TITLE = "PROJECT";
 const getMagnetSize = () => {
   const width = window.innerWidth;
 
-  if (width < 640) return 220;      // Telemóvel
-  if (width < 768) return 300;      // Tablet pequeno
-  if (width < 1024) return 420;     // Tablet
-  if (width < 1440) return 600;     // Portátil
-  return 800;                       // Monitor grande
+  if (width < 640) return 300;      // Telemóvel
+  if (width < 768) return 600;      // Tablet
+  if (width < 1024) return 600;     // Tablet
+  return 1050;                      // Portátil
 };
 
 
@@ -53,6 +52,16 @@ const Homepage = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [aspectRatios, setAspectRatios] = useState<Record<string, number>>({});
+
+  const handleAspectChange = useCallback((magnetId: string, aspect: number) => {
+  setAspectRatios((prev) =>
+    prev[magnetId] === aspect
+      ? prev
+      : { ...prev, [magnetId]: aspect }
+    );
+  }, []);
+
 
 useEffect(() => {
   if (!toast) return;
@@ -186,7 +195,9 @@ useEffect(() => {
           magnets.map((magnet) => {
             const pos = positions[magnet.id];
             if (!pos) return null;
+
             const isDragging = draggingId === magnet.id;
+            const aspect = aspectRatios[magnet.id] ?? 1;
 
             return (
               <div
@@ -198,9 +209,10 @@ useEffect(() => {
                 style={{
                   left: `${pos.xPercent}%`,
                   top: `${pos.yPercent}%`,
-                  width: magnetSize,
+                  width: magnetSize * aspect,
                   height: magnetSize,
                   transform: "translate(-50%, -50%)",
+                  transition: "width 200ms ease",
                 }}
                 onMouseDown={(e) => {
                   e.preventDefault();
@@ -216,10 +228,13 @@ useEffect(() => {
                   }
                 }}
               >
-                <MagnetViewer modelUrl={magnet.modelURL} />
+                <MagnetViewer
+                  modelUrl={magnet.modelURL}
+                  onAspectChange={(a) => handleAspectChange(magnet.id, a)}
+                />
 
                 {hoveredId === magnet.id && !isDragging && (
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 p-3 rounded-lg bg-white shadow-lg border text-sm text-gray-800 pointer-events-none z-30">
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 p-3 rounded-lg bg-white shadow-lg border text-sm text-gray-800 pointer-events-none z-30">
                     <p className="font-semibold">{magnet.titulo}</p>
                     <p className="text-gray-500">{magnet.localização}</p>
                     <p className="mt-1 text-gray-600">{magnet.descrição}</p>

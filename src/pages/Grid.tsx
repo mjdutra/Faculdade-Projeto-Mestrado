@@ -181,8 +181,6 @@ const Grid = () => {
                     className="w-full border-b cursor-pointer transition-colors duration-300"
                 >
 
-
-
                     <div className="grid grid-cols-12 items-center px-4 md:px-10 py-6 md:py-8">
                     <span
                         className={`col-span-1 text-xs font-bold tracking-widest transition-colors duration-300 ${

@@ -16,7 +16,7 @@ const PROJECT_TITLE = "PROJECT";
 const getMagnetSize = () => {
   const width = window.innerWidth;
 
-  if (width < 640) return 300;
+  if (width < 640) return 500;
   if (width < 768) return 600;
   if (width < 1024) return 600;
   return 1050;

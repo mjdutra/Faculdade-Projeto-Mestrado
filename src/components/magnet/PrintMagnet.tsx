@@ -100,11 +100,6 @@ export default function PrintMagnet({ magnet, onClose }: Props) {
           </div>
 
           <div>
-            <p className="text-sm text-gray-500 mb-1">Aponta para</p>
-            <p className="text-xs break-all text-gray-600">{magnetUrl}</p>
-          </div>
-
-          <div>
             <label className="text-sm text-gray-500 mb-2 block">Tamanho do QR Code</label>
             <input
               type="range"

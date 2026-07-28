@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useRef } from 'react';
-import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,7 +47,7 @@ useEffect(() => {
 
           setIsScanning(false);
 
-          window.location.href = `/vr/${decodedText}`;
+          window.location.href = `/?magnet=${decodedText}`;
         },
         () => {}
       );
@@ -89,28 +88,26 @@ const startScanning = () => {
     setIsScanning(false);
   };
 
-  const manualInput = (e: React.FormEvent) => {
+  const manualInput = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.target as HTMLFormElement);
-    const qrCode = formData.get('qrCode') as string;
-    
-    if (qrCode) {
-      setScanResult(qrCode);
-      setIsSuccess(true);
-      setTimeout(() => {
-        window.location.href = `/vr/${qrCode}`;
-      }, 1000);
-    }
 
+    const formData = new FormData(e.currentTarget);
+    const magnetId = (formData.get("qrCode") as string)?.trim();
+
+    if (!magnetId) return;
+
+    setScanResult(magnetId);
+    setIsSuccess(true);
+
+    setTimeout(() => {
+      window.location.href = `/?magnet=${encodeURIComponent(magnetId)}`;
+    }, 1000);
   };
 
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto px-4 py-40">
+      <div className="container mx-auto px-4 py-20">
         <div className="max-w-2xl mx-auto">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-          Experiência
-        </span>
 
         <h2 className="text-3xl font-black uppercase tracking-tight mt-1">
         Digitalizar QR Code
@@ -130,7 +127,6 @@ const startScanning = () => {
                   />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center px-8">
-                <Camera className="w-24 h-24 text-black mb-8" />
               
                 <Button
                   onClick={startScanning}
@@ -188,13 +184,17 @@ const startScanning = () => {
               )}
 
               {/* Manual Input */}
-                <div className="pt-8 border-t border-black">
+                <form
+                  onSubmit={manualInput}
+                  className="pt-8 border-t border-black"
+                >
                 <Label className="uppercase tracking-widest text-xs">
-                    Código Manual
+                  Código Manual
                 </Label>
                 <Input
+                    name="qrCode"
                     className="rounded-none mt-2"
-                    placeholder="QR001"
+                    placeholder="ID do magnet"
                 />
                 <Button
                     type="submit"
@@ -206,13 +206,13 @@ const startScanning = () => {
                         bg-neutral-700
                         hover:bg-neutral-800
                     "
-                >
+                  >
                     Abrir Experiência
                 </Button>
-               </div>
+              </form>
+          </div>
         </div>
       </div>
-    </div>
   );
 };
 

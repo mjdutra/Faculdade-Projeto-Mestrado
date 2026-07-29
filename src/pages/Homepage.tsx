@@ -29,14 +29,13 @@ interface Position {
 
 const centerBiasedRandom = () => (Math.random() + Math.random() + Math.random()) / 3;
 
-
 // ── Parâmetros da colisão suave entre ímanes ─────────────────────────
 const REPEL_PADDING = 2; // encolhe o raio de cada íman
-const BUFFER_FACTOR = 0.1; // zona de interação 
+const BUFFER_FACTOR = 0.1; // zona de interação
 const STRENGTH = 0.06; // fração do overlap corrigida por frame
 
-
-
+// Distância mínima (px) para considerarmos que houve arrasto e não um click.
+const CLICK_MOVE_THRESHOLD = 6;
 
 const Homepage = () => {
   const [searchParams] = useSearchParams();
@@ -59,6 +58,7 @@ const Homepage = () => {
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [aspectRatios, setAspectRatios] = useState<Record<string, number>>({});
 
+
   const handleAspectChange = useCallback((magnetId: string, aspect: number) => {
     setAspectRatios((prev) =>
       prev[magnetId] === aspect ? prev : { ...prev, [magnetId]: aspect }
@@ -75,6 +75,16 @@ const Homepage = () => {
   useEffect(() => {
     draggingIdRef.current = draggingId;
   }, [draggingId]);
+
+  const hoveredIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    hoveredIdRef.current = hoveredId;
+  }, [hoveredId]);
+
+  const magnetsRef = useRef<Magnet[]>([]);
+  useEffect(() => {
+    magnetsRef.current = magnets;
+  }, [magnets]);
 
   const magnetSizeRef = useRef(magnetSize);
   useEffect(() => {
@@ -149,7 +159,7 @@ const Homepage = () => {
     });
   }, [magnets]);
 
-  // Arrasto 2D do íman (reposicionar dentro da Homepage)
+
   useEffect(() => {
     if (!draggingId) return;
 
@@ -183,6 +193,7 @@ const Homepage = () => {
     };
   }, [draggingId]);
 
+
   // ── Colisão entre ímanes ────────────────────────────────────
   useEffect(() => {
     if (magnets.length < 2) return;
@@ -207,7 +218,6 @@ const Homepage = () => {
       const size = magnetSizeRef.current;
       const aspects = aspectRatiosRef.current;
       const draggedId = draggingIdRef.current;
-
 
       const centers: Record<string, { x: number; y: number }> = {};
       const radii: Record<string, number> = {};
@@ -247,7 +257,6 @@ const Homepage = () => {
           if (dist >= bufferZone) continue;
 
           // Dois ímanes exatamente sobrepostos: escolhe um eixo estável
-          // para não dividir por zero.
           if (dist < 0.001) {
             dx = 1;
             dy = 0;
@@ -266,7 +275,6 @@ const Homepage = () => {
           const isBDragging = draggedId === b;
 
           if (isADragging && !isBDragging) {
-            // "a" está a ser controlado pelo rato; só "b" é empurrado.
             corrections[b].x += nx * pushAmount * 2;
             corrections[b].y += ny * pushAmount * 2;
           } else if (isBDragging && !isADragging) {
@@ -289,7 +297,7 @@ const Homepage = () => {
         setPositions((prev) => {
           const next = { ...prev };
           ids.forEach((id) => {
-            if (id === draggedId) return; // o utilizador controla-o diretamente
+            if (id === draggedId) return;
             const correction = corrections[id];
             const pos = prev[id];
             if (!pos || (!correction.x && !correction.y)) return;
@@ -348,43 +356,38 @@ const Homepage = () => {
 
             return (
               <div
-                key={magnet.id}
-                className={cn(
-                  "absolute select-none cursor-grab active:cursor-grabbing",
-                  isDragging ? "z-50" : hoveredId === magnet.id ? "z-40" : "z-20"
-                )}
-                style={{
-                  left: `${pos.xPercent}%`,
-                  top: `${pos.yPercent}%`,
-                  width: magnetSize * aspect,
-                  height: magnetSize,
-                  transform: "translate(-50%, -50%)",
-                  transition: "width 200ms ease",
-                }}
-
-                onPointerDown={() => {
-                  suppressClickRef.current = false;
-                }}
-                onMouseEnter={() => setHoveredId(magnet.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                onClick={() => {
-                  if (!suppressClickRef.current) {
-                    moveMagnetLeft(magnet.id);
-                    setSelectedMagnet(magnet);
-                  }
-                }}
-              >
-                <MagnetViewer
-                  modelUrl={magnet.modelURL}
-                  onAspectChange={(a) => handleAspectChange(magnet.id, a)}
-                  onModelPointerDown={(e) => {
+                  key={magnet.id}
+                  data-magnet-id={magnet.id}
+                  className={cn(
+                    "absolute select-none cursor-grab active:cursor-grabbing",
+                    isDragging ? "z-40" : hoveredId === magnet.id ? "z-30" : "z-20"
+                  )}
+                  style={{
+                    left: `${pos.xPercent}%`,
+                    top: `${pos.yPercent}%`,
+                    width: magnetSize * aspect,
+                    height: magnetSize,
+                    transform: "translate(-50%, -50%)",
+                    transition: "width 200ms ease",
+                  }}
+                  onPointerDown={() => {
+                    suppressClickRef.current = false;
                     setDraggingId(magnet.id);
                   }}
-                  onRotate={() => {
-                    suppressClickRef.current = true;
+                  onMouseEnter={() => setHoveredId(magnet.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  onClick={() => {
+                    if (!suppressClickRef.current) {
+                      moveMagnetLeft(magnet.id);
+                      setSelectedMagnet(magnet);
+                    }
                   }}
-                  orbitEnabled={draggingId !== magnet.id}
-                />
+                >
+                  <MagnetViewer
+                    modelUrl={magnet.modelURL}
+                    onAspectChange={(a) => handleAspectChange(magnet.id, a)}
+                  />
+
 
                 {/* {hoveredId === magnet.id && !isDragging && (
                   <div className="absolute top-full left-1/2 -translate-x-1/2 p-3 rounded-lg bg-white shadow-lg border text-sm text-gray-800 pointer-events-none z-30">

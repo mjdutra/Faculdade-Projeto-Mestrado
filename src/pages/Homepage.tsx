@@ -378,7 +378,6 @@ const Homepage = () => {
                   modelUrl={magnet.modelURL}
                   onAspectChange={(a) => handleAspectChange(magnet.id, a)}
                   onModelPointerDown={(e) => {
-                    e.nativeEvent?.preventDefault?.();
                     setDraggingId(magnet.id);
                   }}
                   onRotate={() => {

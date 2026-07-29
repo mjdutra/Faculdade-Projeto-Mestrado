@@ -115,7 +115,8 @@ const Submit = () => {
 
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [optimizationProgress, setOptimizationProgress] = useState(0);
-  const [optimizationBitrateKbps, setOptimizationBitrateKbps] = useState<number | null>(null);
+  const [optimizationCrf, setOptimizationCrf] = useState<number | null>(null);
+  const [optimizationTargetHeight, setOptimizationTargetHeight] = useState<number | null>(null);
   const [optimizationScaled, setOptimizationScaled] = useState(false);
 
 
@@ -137,8 +138,9 @@ const Submit = () => {
       try {
         const compressed = await compressVideoUnderLimit(file, {
           maxSizeBytes: MAX_VIDEO_SIZE,
-          onProgress: ({ targetBitrateKbps, scaled, ratio }) => {
-            setOptimizationBitrateKbps(targetBitrateKbps);
+          onProgress: ({ crf, targetHeight, scaled, ratio }) => {
+            setOptimizationCrf(crf);
+            setOptimizationTargetHeight(targetHeight);
             setOptimizationScaled(scaled);
             setOptimizationProgress(Math.round(ratio * 100));
           },
@@ -589,8 +591,8 @@ const Submit = () => {
                           <div className="flex justify-between text-xs uppercase tracking-widest font-bold text-gray-500">
                            <span>
                               A comprimir vídeo
-                              {optimizationBitrateKbps
-                                ? ` (~${optimizationBitrateKbps} kbps${optimizationScaled ? ", resolução reduzida" : ""})`
+                              {optimizationTargetHeight
+                                ? ` (${optimizationScaled ? `→ ${optimizationTargetHeight}p` : "resolução original"}, qualidade CRF ${optimizationCrf})`
                                 : ""}
                             </span>
                             <span>{optimizationProgress}%</span>

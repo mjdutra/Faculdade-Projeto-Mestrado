@@ -3,9 +3,24 @@ import { fetchFile, toBlobURL } from "@ffmpeg/util";
 
 const CORE_VERSION = "0.12.10"; 
 const CORE_BASE_URL = `https://unpkg.com/@ffmpeg/core@${CORE_VERSION}/dist/esm`; 
+const CRF_STEPS = [19, 22, 25];
+const TARGET_HEIGHT = 720;
+const DEFAULT_PRESET = "veryfast";
+
 
 let ffmpegInstance: FFmpeg | null = null;
 let loadPromise: Promise<FFmpeg> | null = null;
+
+export interface CompressProgress {
+  pass: number;
+  totalPasses: number;
+  crf: number;
+  targetHeight: number;
+  scaled: boolean;
+  ratio: number;
+}
+
+
 
 export async function getFFmpeg(): Promise<FFmpeg> {
   if (ffmpegInstance) return ffmpegInstance;
@@ -36,6 +51,15 @@ export function resetFFmpeg() {
   loadPromise = null;
 }
 
+
+
+function estimateStartingCrfIndex(file: File, maxSizeBytes: number): number {
+  const ratio = file.size / maxSizeBytes;
+  if (ratio > 5) return 2; // CRF 27 — provavelmente só esta passagem chega
+  if (ratio > 2.5) return 1; // CRF 24
+  return 0; // CRF 21
+}
+
 function getExtension(filename: string) {
   const match = filename.match(/\.[^/.]+$/);
   return match ? match[0] : ".mp4";
@@ -63,12 +87,11 @@ async function probeSource(ffmpeg: FFmpeg, inputName: string) {
   return { width, height, duration };
 }
 
-export interface CompressProgress {
-  pass: number;
-  totalPasses: number;
-  targetBitrateKbps: number;
-  scaled: boolean;
-  ratio: number;
+function vbvCapsForHeight(height: number) {
+  if (height <= 480) return { maxrateK: 2000, bufsizeK: 4000 };
+  if (height <= 720) return { maxrateK: 4500, bufsizeK: 9000 };
+  if (height <= 1080) return { maxrateK: 8000, bufsizeK: 16000 };
+  return { maxrateK: 14000, bufsizeK: 28000 };
 }
 
 export async function compressVideoUnderLimit(
@@ -76,18 +99,20 @@ export async function compressVideoUnderLimit(
   options: {
     maxSizeBytes?: number;
     audioBitrateBps?: number;
-    preset?: string; // "ultrafast" | "superfast" | "veryfast" | ...
-    maxWidthThreshold?: number;
+    preset?: string;
+    targetHeight?: number;
     onProgress?: (info: CompressProgress) => void;
   } = {}
 ): Promise<File> {
   const {
     maxSizeBytes = 100 * 1024 * 1024,
-    audioBitrateBps = 128_000,
-    preset = "ultrafast",
-    maxWidthThreshold = 2560,
+    audioBitrateBps = 160_000,
+    preset = DEFAULT_PRESET,
+    targetHeight = TARGET_HEIGHT,
     onProgress,
   } = options;
+
+
 
   if (file.size <= maxSizeBytes) return file;
 
@@ -95,50 +120,39 @@ export async function compressVideoUnderLimit(
   const inputName = "source" + getExtension(file.name);
   await ffmpeg.writeFile(inputName, await fetchFile(file));
 
-  const { width, duration } = await probeSource(ffmpeg, inputName);
+  const { height, duration } = await probeSource(ffmpeg, inputName);
   if (!duration) throw new Error("Não foi possível ler a duração do vídeo.");
 
-  // Se a resolução de origem for muito grande, reduz já nesta única passagem
-  // (não custa uma passagem extra — vai dentro do mesmo -vf).
-  const scaled = width > maxWidthThreshold;
 
-  let pass = 1;
-  const totalPasses = 2; // normalmente resolve-se logo na 1ª
-  let currentTargetKbps = 0;
+  const scaled = height > targetHeight;
+  const outputHeight = scaled ? targetHeight : height;
+  const { maxrateK, bufsizeK } = vbvCapsForHeight(outputHeight);
 
-  const handleProgress = ({ progress }: { progress: number }) => {
-    onProgress?.({
-      pass,
-      totalPasses,
-      targetBitrateKbps: currentTargetKbps,
-      scaled,
-      ratio: (pass - 1 + Math.min(Math.max(progress, 0), 1)) / totalPasses,
-    });
-  };
+  const totalPasses = CRF_STEPS.length;
+  let lastData: Uint8Array | null = null;
 
-  ffmpeg.on("progress", handleProgress);
+  const startIndex = estimateStartingCrfIndex(file, maxSizeBytes);
 
   try {
-    let targetTotalBits = maxSizeBytes * 8 * 0.96; // 4% de margem para overhead do container
-    let lastData: Uint8Array | null = null;
-
-    for (; pass <= totalPasses; pass++) {
-      const targetVideoBps = Math.max(250_000, targetTotalBits / duration - audioBitrateBps);
-      currentTargetKbps = Math.round(targetVideoBps / 1000);
-
+    for (let i = startIndex; i < CRF_STEPS.length; i++) {
+      const crf = CRF_STEPS[i];
+      const pass = i - startIndex + 1;
+      const totalPasses = CRF_STEPS.length - startIndex;
       const outputName = `output_pass${pass}.mp4`;
+
       const args = ["-i", inputName];
 
+      // Escala mantendo o aspect ratio original; -2 garante largura par.
       if (scaled) {
-        args.push("-vf", `scale='min(${maxWidthThreshold},iw)':-2`);
+        args.push("-vf", `scale=-2:${targetHeight}`);
       }
 
       args.push(
         "-c:v", "libx264",
         "-preset", preset,
-        "-b:v", `${currentTargetKbps}k`,
-        "-maxrate", `${Math.round(currentTargetKbps * 1.2)}k`,
-        "-bufsize", `${Math.round(currentTargetKbps * 2)}k`,
+        "-crf", String(crf),
+        "-maxrate", `${maxrateK}k`,
+        "-bufsize", `${bufsizeK}k`,
         "-movflags", "+faststart",
         "-pix_fmt", "yuv420p",
         "-c:a", "aac",
@@ -146,16 +160,31 @@ export async function compressVideoUnderLimit(
         outputName
       );
 
-      await ffmpeg.exec(args);
+      const handleProgress = ({ progress }: { progress: number }) => {
+        onProgress?.({
+          pass,
+          totalPasses,
+          crf,
+          targetHeight: outputHeight,
+          scaled,
+          ratio: (pass - 1 + Math.min(Math.max(progress, 0), 1)) / totalPasses,
+        });
+      };
+
+      ffmpeg.on("progress", handleProgress);
+      try {
+        // Sempre a partir da fonte original — nunca reencode em cima de uma passagem anterior.
+        await ffmpeg.exec(args);
+      } finally {
+        ffmpeg.off("progress", handleProgress);
+      }
 
       const data = (await ffmpeg.readFile(outputName)) as Uint8Array;
       lastData = data;
       await ffmpeg.deleteFile(outputName).catch(() => {});
 
       if (data.byteLength <= maxSizeBytes) break;
-
-      // Ultrapassou o limite: reajusta o alvo proporcionalmente e tenta mais uma vez
-      targetTotalBits = targetTotalBits * (maxSizeBytes / data.byteLength) * 0.95;
+      // Ainda demasiado grande: tenta o próximo nível de CRF (mais compressão).
     }
 
     await ffmpeg.deleteFile(inputName).catch(() => {});
@@ -164,7 +193,8 @@ export async function compressVideoUnderLimit(
     const blob = new Blob([lastData as Uint8Array<ArrayBuffer>], { type: "video/mp4" });
     const newName = file.name.replace(/\.[^/.]+$/, "") + "_compressed.mp4";
     return new File([blob], newName, { type: "video/mp4" });
-  } finally {
-    ffmpeg.off("progress", handleProgress);
+  } catch (err) {
+    await ffmpeg.deleteFile(inputName).catch(() => {});
+    throw err;
   }
 }

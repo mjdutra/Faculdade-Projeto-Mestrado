@@ -110,13 +110,9 @@ const startScanning = () => {
       <div className="container mx-auto px-4 py-20">
         <div className="max-w-2xl mx-auto">
 
-        <h2 className="text-3xl font-black uppercase tracking-tight mt-1">
+        <h2 className="text-8xl font-black uppercase mt-1 tracking-[-0.02em]">
         Digitalizar QR Code
         </h2>
-
-        <p className="text-gray-400 mt-4">
-        Aponte a câmara para o QR Code do íman para abrir a experiência.
-        </p>
 
               {/* Scanner Area */}
               <div className="relative">
@@ -130,13 +126,15 @@ const startScanning = () => {
                 <div className="w-full h-full flex flex-col items-center justify-center px-8">
               
                 <Button
+                  variant="ghost"
                   onClick={startScanning}
                   className="
+                    bg-transparent
+                    hover:bg-transparent
                     rounded-none
-                    bg-black
-                    hover:bg-neutral-800
+                    hover:opacity-60
                     uppercase
-                    tracking-widest
+                    text-black
                     text-sm
                     font-bold
                     px-10
@@ -189,7 +187,7 @@ const startScanning = () => {
                   onSubmit={manualInput}
                   className="pt-8 border-t border-black"
                 >
-                <Label className="uppercase tracking-widest text-xs">
+                <Label className="uppercase text-xs">
                   Código Manual
                 </Label>
                 <Input

@@ -1,19 +1,25 @@
-import { Link, useLocation } from 'react-router-dom';
-import { cn } from '@/lib/utils';
+import { Link, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/firebase/AuthContext";
 
-const leftItem = { path: '/', label: 'Explore' };
-const centerItem = { path: '/scan', label: 'Scan' };
-const rightItems = [
-  { path: '/submit', label: 'New' },
-  { path: '/profile', label: 'Perfil' },
-];
+const leftItem = { path: "/", label: "Explore" };
+const centerItem = { path: "/scan", label: "Scan" };
 
 export default function TopNav() {
   const { pathname } = useLocation();
+  const { user } = useAuth();
 
+  const rightItems = user
+  ? [
+      { path: "/submit", label: "New" },
+      { path: "/profile", label: "Perfil" },
+    ]
+  : [ { path: "/login", label: "Login" }];
+
+  
   const linkClass = (path: string) =>
     cn(
-      'text-xs md:text-sm font-bold tracking-widest uppercase transition-opacity'
+      "text-xs md:text-sm font-bold tracking-widest uppercase transition-opacity"
     );
 
   return (
@@ -33,7 +39,11 @@ export default function TopNav() {
 
         <div className="flex gap-6 justify-self-end">
           {rightItems.map((item) => (
-            <Link key={item.path} to={item.path} className={linkClass(item.path)}>
+            <Link
+              key={item.path}
+              to={item.path}
+              className={linkClass(item.path)}
+            >
               {item.label}
             </Link>
           ))}

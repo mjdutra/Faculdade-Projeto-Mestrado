@@ -11,30 +11,40 @@ import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import TopNav from "@/components/TopNav";
 import Grid from "./pages/Grid";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@/firebase/AuthContext";
 
 
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Homepage />} />
-          <Route path="/grid" element={<Grid />} />
-          <Route path="/mapa" element={<Mapa />} />
-          <Route path="/scan" element={<Scan />} />
-          <Route path="/submit" element={<Submit />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <TopNav />
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const { user } = useAuth();
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Homepage />} />
+            <Route path="/grid" element={<Grid />} />
+            <Route path="/mapa" element={<Mapa />} />
+            <Route path="/scan" element={<Scan />} />
+            <Route path="/submit" element={user ? <Submit /> : <Navigate to="/login" replace />}/>
+            <Route path="/profile" element={<Profile />} />
+            <Route path="*" element={<NotFound />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+          </Routes>
+          <TopNav />
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

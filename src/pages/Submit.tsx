@@ -1,7 +1,7 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/firebase/config";
-import { addDoc, collection, Timestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { uploadFile } from "@/services/cloudinary";
 import TopNav from "@/components/TopNav";
 import VideoControls from "@/components/video/VideoControls";
@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MapPin, Video, Star, Box, ChevronRight, ChevronLeft, Check, Plus, Trash2, Crosshair } from "lucide-react";
 import { PointOfInterest } from "@/components/poi/PointOfInterest";
 import { compressVideoUnderLimit, resetFFmpeg } from "@/lib/ffmpegClient";
+import { useAuth } from "@/firebase/AuthContext";
 
 const STEPS = [
   { id: 1, label: "Informação"},
@@ -93,7 +94,7 @@ const Submit = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
-
+  const { user } = useAuth();
 
 
 
@@ -310,7 +311,9 @@ const Submit = () => {
       modelURL: uploadedModel.secure_url,
       modelPublicId: uploadedModel.public_id,
       modelResourceType: uploadedModel.resource_type,
-      createdAt: new Date(),
+      createdAt: serverTimestamp(),
+      ownerId: user?.uid,
+      ownerEmail: user?.email,
     });
 
     setSubmitted(true);

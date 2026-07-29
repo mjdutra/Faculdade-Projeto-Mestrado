@@ -5,6 +5,8 @@ import type { Magnet } from "@/types/magnet";
 import VRExperience from "@/components/magnet/VRExperience";
 import PrintMagnet from "@/components/magnet/PrintMagnet";
 import { deleteMagnet } from "@/services/deletemagnet";
+import { useAuth } from "@/firebase/AuthContext";
+
 
 interface Props {
   magnet: Magnet | null;
@@ -18,6 +20,9 @@ export default function MagnetPage({ magnet, onClose, onDeleted }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+
+  const isOwner = !!user && !!magnet && magnet.ownerId === user.uid;
 
   useEffect(() => {
     setVrOpen(false);
@@ -99,16 +104,18 @@ export default function MagnetPage({ magnet, onClose, onDeleted }: Props) {
               {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
             </div>
 
-            <div className="p-8 flex justify-end">
-              <button
-                onClick={() => setConfirmOpen(true)}
-                disabled={deleting}
-                className="flex items-center gap-2 text-red-600 hover:text-red-800 disabled:opacity-50"
-              >
-                <Trash2 size={20} />
-                Delete
-              </button>
-            </div>
+            {isOwner && (
+              <div className="p-8 flex justify-end">
+                <button
+                  onClick={() => setConfirmOpen(true)}
+                  disabled={deleting}
+                  className="flex items-center gap-2 text-red-600 hover:text-red-800 disabled:opacity-50"
+                >
+                  <Trash2 size={20} />
+                  Delete
+                </button>
+              </div>
+            )}
           </div>
         )}
       </aside>
@@ -116,7 +123,7 @@ export default function MagnetPage({ magnet, onClose, onDeleted }: Props) {
       {magnet && vrOpen && <VRExperience magnet={magnet} onClose={() => setVrOpen(false)} />}
       {magnet && printOpen && <PrintMagnet magnet={magnet} onClose={() => setPrintOpen(false)} />}
 
-      {magnet && confirmOpen && (
+      {magnet && isOwner && confirmOpen && (
         <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-sm bg-white border border-black p-8">
             <h3 className="text-lg font-black uppercase mb-3">Eliminar Magnet?</h3>

@@ -25,4 +25,7 @@ export interface Magnet {
   data?: Timestamp;
   points: PointOfInterest[];
   qrPlacement?: QRPlacement;
+  ownerId?: string;
+  ownerEmail?: string | null;
+  createdAt?: Timestamp;
 }

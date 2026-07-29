@@ -11,12 +11,13 @@ src/
 ├── ├── poi/            # Hotspot, HotspotTooltip, PointOfInterest
 │   ├── video/          # Video360Viewer, VideoControls
 │   └── TopNav
-├── pages/               # Homepage, Submit, Magnet, Scan, Profile
+├── pages/               # Homepage, Submit, Magnet, Scan, Profile, Grid, Login, Register
 ├── types/               # magnet.ts (interface partilhada)
 ├── lib/                 # qrcode.ts, utils.ts, spherical.ts
 ├── services/            # cloudinary.ts, deletemagnet.ts
 └── firebase/
     └── config.ts
+    └── AuthContext.tsx
 
 
 # instalar dependências

@@ -22,7 +22,6 @@ export interface Magnet {
   modelPublicId?: string;
   modelResourceType?: string;
   coordenadas?: GeoPoint;
-  data?: Timestamp;
   points: PointOfInterest[];
   qrPlacement?: QRPlacement;
   ownerId?: string;

@@ -24,16 +24,20 @@ function formatDuracao(seconds?: number) {
 }
 
 const Grid = () => {
-  const [magnets, setMagnets] = useState<Magnet[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [durations, setDurations] = useState<Record<string, number>>({});
-  const [selectedMagnet, setSelectedMagnet] = useState<Magnet | null>(null);
-  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const [cursor, setCursor] = useState({
-  x: window.innerWidth * 0.8,
-  y: window.innerHeight / 2,
-});
+    const [magnets, setMagnets] = useState<Magnet[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [hoveredId, setHoveredId] = useState<string | null>(null);
+    const [durations, setDurations] = useState<Record<string, number>>({});
+    const [selectedMagnet, setSelectedMagnet] = useState<Magnet | null>(null);
+    const [dateSort, setDateSort] = useState<"asc" | "desc">("asc");
+    const [nameSort, setNameSort] = useState<"asc" | "desc" | null>(null);
+    const [durationSort, setDurationSort] = useState<"asc" | "desc" | null>(null);
+
+    const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    const [cursor, setCursor] = useState({
+        x: window.innerWidth * 0.8,
+        y: window.innerHeight / 2,
+    });
 
 
   useEffect(() => {
@@ -54,25 +58,117 @@ const Grid = () => {
     fetchMagnets();
   }, []);
 
+    const sortedMagnets = useMemo(() => {
+        return [...magnets].sort((a, b) => {
+            
+            //Ordenar por nome
+            if (nameSort) {
+                const nameA = a.titulo?.trim() ?? "";
+                const nameB = b.titulo?.trim() ?? "";
 
-  const loadVideoDuration = (magnet: Magnet) => {
-        if (!magnet.videoURL || durations[magnet.id] !== undefined) return;
+                const comparison = nameA.localeCompare(
+                    nameB,
+                    "pt",
+                    { sensitivity: "base" }
+                );
 
-        const video = document.createElement("video");
-        video.preload = "metadata";
-        video.src = magnet.videoURL;
+                return nameSort === "asc"
+                    ? comparison
+                    : -comparison;
+            }
 
-        video.onloadedmetadata = () => {
-            setDurations((prev) => ({
-            ...prev,
-            [magnet.id]: video.duration,
-            }));
+            //Ordenar por duração
+            if (durationSort) {
+                const durationA = durations[a.id];
+                const durationB = durations[b.id];
+
+                if (durationA === undefined && durationB === undefined) return 0;
+                if (durationA === undefined) return 1;
+                if (durationB === undefined) return -1;
+
+                return durationSort === "asc"
+                    ? durationA - durationB
+                    : durationB - durationA;
+                }
+
+            //Ordenar por data
+            const dateA = a.createdAt?.toMillis(); 
+            const dateB = b.createdAt?.toMillis(); 
+
+            if (dateA === undefined && dateB === undefined) return 0; 
+            if (dateA === undefined) return 1; 
+            if (dateB === undefined) return -1; 
+            
+            // mais antiga → mais recente 
+            if (dateSort !== "desc") {
+                return dateA - dateB; } 
+            
+            // mais recente → mais antiga 
+            return dateB - dateA; 
+        }); 
+    }, [ magnets, durations, dateSort, nameSort, durationSort]);
+
+
+
+    const handleDateSort = () => {
+        setNameSort(null);
+        setDurationSort(null);
+
+        setDateSort((current) => (
+            current === "asc" ? "desc" : "asc"
+        ));
         };
+
+    const handleNameSort = () => {
+        setDateSort("asc");
+        setDurationSort(null);
+
+        setNameSort((current) => (
+            current === "asc" ? "desc" : "asc"
+        ));
+    };
+
+    const handleDurationSort = () => {
+        setDateSort("asc");
+        setNameSort(null);
+
+        setDurationSort((current) => (
+            current === "asc" ? "desc" : "asc"
+        ));
+    };
+
+
+    const loadVideoDuration = (magnet: Magnet) => {
+            if (!magnet.videoURL || durations[magnet.id] !== undefined) return;
+
+            const video = document.createElement("video");
+
+            video.crossOrigin = "anonymous";
+            video.preload = "metadata";
+
+            video.onloadedmetadata = () => {
+                if (isFinite(video.duration)) {
+                setDurations((prev) => ({
+                    ...prev,
+                    [magnet.id]: video.duration,
+                }));
+                }
+            };
+
+            video.onerror = (error) => {
+                console.error(
+                `Erro ao carregar duração do vídeo ${magnet.id}:`,
+                error,
+                magnet.videoURL
+                );
+        };
+
+            video.src = magnet.videoURL;
     };
 
     useEffect(() => {
     magnets.forEach(loadVideoDuration);
-    }, [magnets]);
+    }, [magnets, durations]);
 
     const hoveredMagnet = useMemo(
         () => magnets.find((m) => m.id === hoveredId) ?? null,
@@ -159,17 +255,30 @@ const Grid = () => {
         </div>
 
         <div className="w-full border-b border-black">
-            <div className="grid grid-cols-12 px-4 md:px-10 pb-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+            <div className="grid grid-cols-12 gap-x-2 px-4 sm:px-6 md:px-10 pb-3 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-gray-400">
                 <span className="col-span-1">#</span>
-                <span className="col-span-5">Nome da Experiência</span>
-                <span className="col-span-2 text-center">Data</span>
-                <span className="col-span-2 text-center">Tempo de vídeo</span>
-                <span className="col-span-2"></span>
+                <button type="button" onClick={handleNameSort}
+                    className="col-span-5 text-left cursor-pointer select-none uppercase tracking-widest hover:text-black transition-colors"
+                >Nome da Experiência </button>
+
+                <button type="button" onClick={handleDateSort} 
+                    className="col-span-3 text-right cursor-pointer select-none uppercase tracking-widest" 
+                > Data 
+                    {dateSort === "asc" && !nameSort && !durationSort && (
+                    <span className="ml-2">↑</span>)}
+                    {dateSort === "desc" && !nameSort && !durationSort && (
+                    <span className="ml-2">↓</span>)}
+                </button>
+                
+                <button type="button" onClick={handleDurationSort}
+                    className="col-span-3 text-right cursor-pointer select-none uppercase tracking-widest hover:text-black transition-colors"
+                > Tempo de vídeo
+                </button>
             </div>
         </div>
 
          {!loading &&
-            magnets.map((magnet, index) => {
+            sortedMagnets.map((magnet, index) => {
                 const isHovered = hoveredId === magnet.id;
 
                 return (
@@ -178,10 +287,9 @@ const Grid = () => {
                     ref={(el) => {
                         rowRefs.current[magnet.id] = el;
                     }}
-                    className="w-full border-b cursor-pointer transition-colors duration-300"
-                >
-
+                    className="w-full border-b cursor-pointer transition-colors duration-300">
                     <div className="grid grid-cols-12 items-center px-4 md:px-10 py-6 md:py-8">
+                    
                     <span
                         className={`col-span-1 text-xs font-bold tracking-widest transition-colors duration-300 ${
                         isHovered ? "text-black" : "text-gray-300"
@@ -198,11 +306,11 @@ const Grid = () => {
                         {magnet.titulo}
                     </span>
 
-                    <span className="col-span-2 text-center text-xs md:text-sm text-gray-500 uppercase tracking-widest">
-                        {formatInicio(magnet.data)}
+                    <span className="col-span-3 text-right text-[10px] sm:text-xs md:text-sm text-gray-500 uppercase tracking-widest whitespace-nowrap">
+                        {formatInicio(magnet.createdAt)}
                     </span>
 
-                    <span className="col-span-2 text-center text-xs md:text-sm text-gray-500 tabular-nums">
+                    <span className="col-span-3 text-right text-[10px] sm:text-xs md:text-sm text-gray-500 tabular-nums whitespace-nowrap">
                         {formatDuracao(durations[magnet.id])}
                     </span>
 

@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useGLTF, Environment } from "@react-three/drei";
 import { Rotate3d } from "lucide-react";
 import * as THREE from "three";
@@ -55,33 +55,32 @@ function CameraRig({ radius }: { radius: number }) {
 }
 
 function BottomAnchorTracker({
-      minY,
-      onBottomPercentChange,
-    }: {
-      minY: number;
-      onBottomPercentChange: (percent: number) => void;
-    }) {
-      const camera = useThree((s) => s.camera);
-      const size = useThree((s) => s.size);
+  minY,
+  onBottomPercentChange,
+}: {
+  minY: number;
+  onBottomPercentChange: (percent: number) => void;
+}) {
+  const camera = useThree((s) => s.camera);
+  const size = useThree((s) => s.size);
 
-      useEffect(() => {
-        if (size.width === 0 || size.height === 0) return;
+  useEffect(() => {
+    if (size.width === 0 || size.height === 0) return;
 
-        const bottomPoint = new THREE.Vector3(0, minY, 0);
-        const projected = bottomPoint.clone().project(camera);
+    const bottomPoint = new THREE.Vector3(0, minY, 0);
+    const projected = bottomPoint.clone().project(camera);
 
-        const percentFromTop = THREE.MathUtils.clamp(
-          ((1 - projected.y) / 2) * 100,
-          0,
-          100
-        );
+    const percentFromTop = THREE.MathUtils.clamp(
+      ((1 - projected.y) / 2) * 100,
+      0,
+      100
+    );
 
-        onBottomPercentChange(percentFromTop);
-      }, [camera, size, minY, onBottomPercentChange]);
+    onBottomPercentChange(percentFromTop);
+  }, [camera, size, minY, onBottomPercentChange]);
 
-      return null;
+  return null;
 }
-
 
 function MagnetModel({
   url,
@@ -122,71 +121,87 @@ function Fallback() {
 }
 
 export function MagnetViewer({
-      modelUrl,
-      className,
-      preserveDrawingBuffer = false,
-      onAspectChange,
-      infoContent,
-    }: {
-      modelUrl: string;
-      className?: string;
-      preserveDrawingBuffer?: boolean;
-      onAspectChange?: (aspect: number) => void;
-      infoContent?: React.ReactNode;
-    }) {
-      const [radius, setRadius] = useState(1.5);
-      const [modelMinY, setModelMinY] = useState(-1.5);
-      const [bottomPercent, setBottomPercent] = useState(80);
-      const [hovering, setHovering] = useState(false);
-      const [isRotating, setIsRotating] = useState(false);
+  modelUrl,
+  className,
+  preserveDrawingBuffer = false,
+  onAspectChange,
+  infoContent,
+}: {
+  modelUrl: string;
+  className?: string;
+  preserveDrawingBuffer?: boolean;
+  onAspectChange?: (aspect: number) => void;
+  infoContent?: React.ReactNode;
+}) {
+  const [radius, setRadius] = useState(1.5);
+  const [modelMinY, setModelMinY] = useState(-1.5);
+  const [bottomPercent, setBottomPercent] = useState(80);
+  const [hovering, setHovering] = useState(false);
+  const [isRotating, setIsRotating] = useState(false);
+  const [hoveringModel, setHoveringModel] = useState(false);
 
-      const modelGroupRef = useRef<THREE.Group>(null);
-      const lastPointerRef = useRef({ x: 0, y: 0 });
+  const modelGroupRef = useRef<THREE.Group>(null);
+  const lastPointerRef = useRef({ x: 0, y: 0 });
 
-      const handleBounds = useCallback(
-        ({ aspect, radius, minY }: ModelBounds) => {
-          setRadius((prev) => (prev === radius ? prev : radius));
-          setModelMinY((prev) => (prev === minY ? prev : minY));
-          onAspectChange?.(aspect);
-        },
-        [onAspectChange]
+  const handleBounds = useCallback(
+    ({ aspect, radius, minY }: ModelBounds) => {
+      setRadius((prev) => (prev === radius ? prev : radius));
+      setModelMinY((prev) => (prev === minY ? prev : minY));
+      onAspectChange?.(aspect);
+    },
+    [onAspectChange]
+  );
+
+  const handleBottomPercentChange = useCallback((percent: number) => {
+    setBottomPercent((prev) => (Math.abs(prev - percent) < 0.1 ? prev : percent));
+  }, []);
+
+  // Deteção real via raycasting: só dispara quando o ponteiro
+  // intersecta uma mesh visível do GLB (evento bubbling até ao grupo).
+  const handleModelPointerOver = useCallback((e: ThreeEvent<PointerEvent>) => {
+    setHoveringModel(true);
+  }, []);
+
+  // Sem isto, hoveringModel nunca volta a false.
+  const handleModelPointerOut = useCallback((e: ThreeEvent<PointerEvent>) => {
+    setHoveringModel(false);
+  }, []);
+
+  useEffect(() => {
+    setHoveringModel(false);
+  }, [modelUrl]);
+
+  useEffect(() => {
+    if (!isRotating) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      const dx = e.clientX - lastPointerRef.current.x;
+      const dy = e.clientY - lastPointerRef.current.y;
+      lastPointerRef.current = { x: e.clientX, y: e.clientY };
+
+      const group = modelGroupRef.current;
+      if (!group) return;
+
+      group.rotation.y += dx * ROTATE_SENSITIVITY;
+      group.rotation.x = THREE.MathUtils.clamp(
+        group.rotation.x + dy * ROTATE_SENSITIVITY,
+        -MAX_PITCH,
+        MAX_PITCH
       );
+    };
 
-      const handleBottomPercentChange = useCallback((percent: number) => {
-        setBottomPercent((prev) => (Math.abs(prev - percent) < 0.1 ? prev : percent));
-      }, []);
+    const handlePointerUp = () => {
+      setIsRotating(false);
+      document.body.style.cursor = "";
+    };
 
-      useEffect(() => {
-            if (!isRotating) return;
-
-            const handlePointerMove = (e: PointerEvent) => {
-              const dx = e.clientX - lastPointerRef.current.x;
-              const dy = e.clientY - lastPointerRef.current.y;
-              lastPointerRef.current = { x: e.clientX, y: e.clientY };
-
-              const group = modelGroupRef.current;
-              if (!group) return;
-
-              group.rotation.y += dx * ROTATE_SENSITIVITY;
-              group.rotation.x = THREE.MathUtils.clamp(
-                group.rotation.x + dy * ROTATE_SENSITIVITY,
-                -MAX_PITCH,
-                MAX_PITCH
-              );
-            };
-
-            const handlePointerUp = () => {
-              setIsRotating(false);
-              document.body.style.cursor = "";
-            };
-
-            window.addEventListener("pointermove", handlePointerMove);
-            window.addEventListener("pointerup", handlePointerUp);
-            return () => {
-              window.removeEventListener("pointermove", handlePointerMove);
-              window.removeEventListener("pointerup", handlePointerUp);
-            };
-          }, [isRotating]);
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [isRotating]);
 
   const handleRotateButtonPointerDown = (e: React.PointerEvent) => {
     e.stopPropagation();
@@ -196,15 +211,29 @@ export function MagnetViewer({
     document.body.style.cursor = "grabbing";
   };
 
+  const containerCursor = isRotating
+    ? "grabbing"
+    : hoveringModel
+    ? "grab"
+    : "default";
+
   return (
     <div
       className={className}
-      style={{ width: "100%", height: "100%", position: "relative" }}
+      style={{
+        width: "100%",
+        height: "100%",
+        position: "relative",
+        // ESSENCIAL: sobrepõe-se ao "cursor-grab" herdado do card
+        // ancestral no Homepage.tsx. Sem isto, o cursor do pai
+        // "atravessa" toda a área do canvas, incluindo o fundo
+        // transparente, porque `cursor` é uma propriedade herdada.
+        cursor: containerCursor,
+      }}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
     >
-
-      <div style={{ width: "100%", height: "100%", pointerEvents: "none" }}>
+      <div style={{ width: "100%", height: "100%" }}>
         <Canvas
           camera={{ position: [0, 0, 5], fov: 45 }}
           gl={{ antialias: true, preserveDrawingBuffer }}
@@ -213,7 +242,11 @@ export function MagnetViewer({
           <ambientLight intensity={0.5} />
           <directionalLight position={[3, 3, 3]} intensity={15} />
           <Suspense fallback={<Fallback />}>
-            <group ref={modelGroupRef}>
+            <group
+              ref={modelGroupRef}
+              onPointerOver={handleModelPointerOver}
+              onPointerOut={handleModelPointerOut}
+            >
               <MagnetModel url={modelUrl} onBounds={handleBounds} />
             </group>
             <Environment preset="city" />
@@ -253,7 +286,7 @@ export function MagnetViewer({
       >
         <Rotate3d size={16} strokeWidth={2} color="#404040" />
       </button>
-      
+
       {infoContent && hovering && (
         <div
           style={{

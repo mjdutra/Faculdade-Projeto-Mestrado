@@ -6,11 +6,12 @@ import * as THREE from "three";
 import { doc, updateDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { db } from "@/firebase/config";
-import { X, Check, RotateCcw } from "lucide-react";
+import { X, Check, RotateCcw, Download } from "lucide-react";
 import type { Magnet } from "@/types/magnet";
 import MagnetPrintScene, { type DecalState } from "@/components/magnet/MagnetPrintScene";
 import type { ReliefMode } from "@/components/magnet/QRCode";
 import { Button } from "@/components/ui/button";
+import { exportMagnetForPrint, type ExportProgress} from "@/lib/export-magnet";
 
 interface Props {
   magnet: Magnet;
@@ -35,6 +36,12 @@ export default function PrintMagnet({ magnet, onClose }: Props) {
   const [mode, setMode] = useState<ReliefMode>(magnet.qrPlacement?.mode ?? "emboss");
   const [reliefHeight, setReliefHeight] = useState(magnet.qrPlacement?.reliefHeight ?? 0.02);
   const [saving, setSaving] = useState(false);
+  const [flipNormal, setFlipNormal] = useState(magnet.qrPlacement?.flipNormal ?? false);
+  const [includeGlb, setIncludeGlb] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
+
+
 
   const handleSave = async () => {
     if (!decal) {
@@ -50,6 +57,7 @@ export default function PrintMagnet({ magnet, onClose }: Props) {
           scale,
           mode,
           reliefHeight,
+          flipNormal,
         },
       });
       toast.success("Posição do QR Code guardada.");
@@ -61,6 +69,72 @@ export default function PrintMagnet({ magnet, onClose }: Props) {
     }
   };
 
+  const handleExportPrint = async () => {
+      if (!decal) {
+        toast.error(
+          "Posicione o QR Code sobre o íman antes de exportar."
+        );
+        return;
+      }
+
+      try {
+        setExporting(true);
+
+        setExportProgress({
+          stage: "loading-model",
+          percent: 0,
+          label: "A preparar...",
+        });
+
+        const result =
+          await exportMagnetForPrint({
+            modelUrl: magnet.modelURL,
+            magnetId: magnet.id,
+            qrValue: magnetUrl,
+            decal,
+            scale,
+            mode,
+            reliefHeight,
+            flipNormal,
+            includeGlb,
+
+            onProgress:
+              setExportProgress,
+          });
+
+        if (
+          !result.resultWatertight.watertight
+        ) {
+          toast.warning(
+            `STL gerado, mas a malha final tem ${result.resultWatertight.unmatchedEdges} arestas abertas.`
+          );
+        } else {
+          toast.success(
+            `${result.stlFilename} está pronto para download.`
+          );
+        }
+
+        if (result.glbFilename) {
+          toast.success(
+            `${result.glbFilename} também foi exportado.`
+          );
+        }
+      } catch (error) {
+        console.error(
+          "[PrintMagnet] Erro na exportação:",
+          error
+        );
+
+        toast.error(
+          "Não foi possível gerar o modelo para impressão."
+        );
+      } finally {
+        setExporting(false);
+        setExportProgress(null);
+      }
+  };
+
+  
   return (
     <div className="fixed inset-0 z-[999999] bg-white flex flex-col">
       <div className="flex justify-between items-center p-4 border-b border-black">
@@ -79,6 +153,7 @@ export default function PrintMagnet({ magnet, onClose }: Props) {
               scale={scale}
               mode={mode}
               reliefHeight={reliefHeight}
+              flipNormal={flipNormal}
               decal={decal}
               onDecalChange={setDecal}
             />
@@ -113,6 +188,19 @@ export default function PrintMagnet({ magnet, onClose }: Props) {
           </div>
 
           <div>
+            <label className="text-sm text-gray-500 mb-2 block">Profundidade do relevo</label>
+            <input
+              type="range"
+              min={0.005}
+              max={0.05}
+              step={0.001}
+              value={reliefHeight}
+              onChange={(e) => setReliefHeight(Number(e.target.value))}
+              className="w-full"
+            />
+          </div>
+
+          <div>
             <label className="text-sm text-gray-500 mb-2 block">Relevo</label>
             <div className="grid grid-cols-2 gap-2">
               <Button
@@ -134,18 +222,6 @@ export default function PrintMagnet({ magnet, onClose }: Props) {
             </div>
           </div>
 
-          <div>
-            <label className="text-sm text-gray-500 mb-2 block">Profundidade do relevo</label>
-            <input
-              type="range"
-              min={0.005}
-              max={0.05}
-              step={0.001}
-              value={reliefHeight}
-              onChange={(e) => setReliefHeight(Number(e.target.value))}
-              className="w-full"
-            />
-          </div>
 
           <div className="flex flex-col gap-3">
             <Button
@@ -169,10 +245,50 @@ export default function PrintMagnet({ magnet, onClose }: Props) {
               {saving ? "A guardar..." : "Guardar posição"}
             </Button>
           </div>
+          <div className="pt-6 border-t border-gray-200 space-y-3">
 
-          <p className="text-xs text-gray-400">
-            O QR Code é gerado como geometria 3D (relevo), pronto para ser impresso numa única cor de filamento.
-          </p>
+            <label className="flex items-center gap-2 text-sm text-gray-600">
+              <input
+                type="checkbox"
+                checked={includeGlb}
+                onChange={(e) => setIncludeGlb(e.target.checked)} disabled={exporting}
+              />
+              Exportar também em .glb
+            </label>
+
+            <Button
+              type="button"
+              disabled={!decal || exporting}
+              onClick={handleExportPrint}
+              className="w-full rounded-none uppercase text-xs font-bold tracking-widest"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              {exporting
+                ? "A exportar..."
+                : "Exportar para impressão"}
+            </Button>
+
+            {exporting && exportProgress && (
+              <div className="space-y-2">
+                <div className="h-1.5 w-full bg-gray-200 overflow-hidden">
+                  <div
+                    className="h-full bg-black transition-all duration-300"
+                    style={{width: `${exportProgress.percent}%`}}
+                  />
+                </div>
+
+                <div className="flex justify-between text-xs text-gray-400">
+                  <span>
+                    {exportProgress.label}
+                  </span>
+
+                  <span>
+                    {Math.round(exportProgress.percent)}%
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

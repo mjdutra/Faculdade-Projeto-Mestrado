@@ -126,11 +126,13 @@ export function MagnetViewer({
       className,
       preserveDrawingBuffer = false,
       onAspectChange,
+      infoContent,
     }: {
       modelUrl: string;
       className?: string;
       preserveDrawingBuffer?: boolean;
       onAspectChange?: (aspect: number) => void;
+      infoContent?: React.ReactNode;
     }) {
       const [radius, setRadius] = useState(1.5);
       const [modelMinY, setModelMinY] = useState(-1.5);
@@ -251,6 +253,29 @@ export function MagnetViewer({
       >
         <Rotate3d size={16} strokeWidth={2} color="#404040" />
       </button>
+      
+      {infoContent && hovering && (
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: `calc(${bottomPercent}% + ${BUTTON_GAP_PX + 38}px)`,
+            transform: "translateX(-50%)",
+            width: 224,
+            padding: "12px",
+            borderRadius: 8,
+            background: "white",
+            boxShadow: "0 4px 14px rgba(0, 0, 0, 0.12)",
+            border: "1px solid #e5e5e5",
+            fontSize: 14,
+            color: "#262626",
+            zIndex: 20,
+            pointerEvents: "none",
+          }}
+        >
+          {infoContent}
+        </div>
+      )}
     </div>
   );
 }

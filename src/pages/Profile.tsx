@@ -179,15 +179,18 @@ const Profile = () => {
                 onMouseLeave={() => setHoveredId(null)}
                 onDoubleClick={() => setSelectedMagnet(magnet)}
               >
-                <MagnetViewer modelUrl={magnet.modelURL} />
-
-                {hoveredId === magnet.id && !isDragging && (
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 p-3 rounded-lg bg-white shadow-lg border text-sm text-gray-800 pointer-events-none z-30">
-                    <p className="font-semibold">{magnet.titulo}</p>
-                    <p className="text-gray-500">{magnet.localização}</p>
-                    <p className="mt-1 text-gray-600">{magnet.descrição}</p>
-                  </div>
-                )}
+                <MagnetViewer
+                      modelUrl={magnet.modelURL}
+                      infoContent={
+                        hoveredId === magnet.id && !isDragging ? (
+                          <>
+                            <p className="font-semibold">{magnet.titulo}</p>
+                            <p className="text-gray-500">{magnet.localização}</p>
+                            <p className="mt-1 text-gray-600">{magnet.descrição}</p>
+                          </>
+                        ) : undefined
+                      }
+                    />
               </div>
             );
           })}

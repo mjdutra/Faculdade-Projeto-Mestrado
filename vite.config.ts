@@ -5,7 +5,7 @@ import path from "path";
 
 export default defineConfig({
 
-    base: "/",
+    base: "/Faculdade-Projeto-Mestrado/",
 
   server: {
     host: "::",

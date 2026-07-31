@@ -20,6 +20,11 @@ const COLLISION_DISTANCE = MAGNET_SIZE * 0.55;
 const COLLISION_STRENGTH = 0.12;
 const MAX_PUSH_PER_FRAME = 4;
 
+const MIN_DISTANCE = 28;
+const MAGNETS_PER_ROW = 4;
+const ROW_HEIGHT = 500;
+
+
 interface Position {
   xPercent: number;
   yPercent: number;
@@ -34,6 +39,36 @@ interface DragStart {
 }
 
 const centerBiasedRandom = () => (Math.random() + Math.random() + Math.random()) / 3;
+
+const getRandomPosition = (
+      existing: Position[],
+      total: number
+    ): Position => {
+      const maxAttempts = 100;
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const position = {
+          xPercent: 6 + Math.random() * 88,
+          yPercent: 8 + Math.random() * 84,
+        };
+
+        const isFarEnough = existing.every((other) => {
+          const dx = position.xPercent - other.xPercent;
+          const dy = position.yPercent - other.yPercent;
+
+          return Math.hypot(dx, dy) > MIN_DISTANCE;
+        });
+
+        if (isFarEnough) {
+          return position;
+        }
+      }
+
+      return {
+        xPercent: 6 + Math.random() * 88,
+        yPercent: 8 + Math.random() * 84,
+      };
+  };
 
 const Homepage = () => {
   const [magnets, setMagnets] = useState<Magnet[]>([]);
@@ -58,6 +93,30 @@ const Homepage = () => {
   useEffect(() => { positionsRef.current = positions; }, [positions]);
   useEffect(() => { magnetsRef.current = magnets; }, [magnets]);
   useEffect(() => { draggingIdRef.current = draggingId; }, [draggingId]);
+
+  useEffect(() => { setPositions((prev) => {
+      const next = { ...prev };
+      const existingPositions = magnets
+        .map((magnet) => next[magnet.id])
+        .filter(Boolean);
+      magnets.forEach((magnet) => {
+        if (!next[magnet.id]) {
+          const position = getRandomPosition(
+            existingPositions,
+            magnets.length
+          );
+          next[magnet.id] = position;
+          existingPositions.push(position);
+        }
+      });
+      return next;
+    });
+  }, [magnets]);
+
+  const contentHeight = Math.max(
+    window.innerHeight,
+    Math.ceil(magnets.length / MAGNETS_PER_ROW) * ROW_HEIGHT
+  );
 
   useEffect(() => {
     const fetchMagnets = async () => {
@@ -84,8 +143,8 @@ const Homepage = () => {
       magnets.forEach((magnet) => {
         if (!next[magnet.id]) {
           next[magnet.id] = {
-            xPercent: 20 + centerBiasedRandom() * 60,
-            yPercent: 25 + centerBiasedRandom() * 50,
+            xPercent: 10 + centerBiasedRandom() * 60,
+            yPercent: 20 + centerBiasedRandom() * 50,
           };
         }
       });
@@ -282,9 +341,13 @@ const Homepage = () => {
 
       <div
         ref={containerRef}
-        className="relative w-full h-screen flex items-center justify-center overflow-hidden"
+        className="relative w-full"
+        style={{
+          minHeight: contentHeight,
+        }}
       >
-        <h1 className="text-[14vw] tracking-wide leading-none font-black tracking-tight text-black select-none whitespace-nowrap">
+        <h1  
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[14vw] leading-none font-black tracking-tight text-black select-none whitespace-nowrap pointer-events-none">
           {PROJECT_TITLE}
         </h1>
 

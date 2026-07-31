@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
+import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { useGLTF, Environment } from "@react-three/drei";
 import { Rotate3d } from "lucide-react";
 import * as THREE from "three";
@@ -82,6 +82,62 @@ function BottomAnchorTracker({
   return null;
 }
 
+function ModelHoverProbe({
+  modelGroupRef,
+  onHoverChange,
+}: {
+  modelGroupRef: React.RefObject<THREE.Group>;
+  onHoverChange: (hovering: boolean) => void;
+}) {
+  const { camera, gl } = useThree();
+  const mouseRef = useRef({ x: -Infinity, y: -Infinity });
+  const wasHovering = useRef(false);
+  const raycaster = useMemo(() => new THREE.Raycaster(), []);
+  const ndc = useMemo(() => new THREE.Vector2(), []);
+
+  useEffect(() => {
+    const handlePointerMove = (e: PointerEvent) => {
+      mouseRef.current.x = e.clientX;
+      mouseRef.current.y = e.clientY;
+    };
+    window.addEventListener("pointermove", handlePointerMove);
+    return () => window.removeEventListener("pointermove", handlePointerMove);
+  }, []);
+
+  useFrame(() => {
+    const group = modelGroupRef.current;
+    if (!group) return;
+
+    const rect = gl.domElement.getBoundingClientRect();
+    const { x, y } = mouseRef.current;
+
+    const inside =
+      x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+
+    if (!inside) {
+      if (wasHovering.current) {
+        wasHovering.current = false;
+        onHoverChange(false);
+      }
+      return;
+    }
+
+    ndc.x = ((x - rect.left) / rect.width) * 2 - 1;
+    ndc.y = -(((y - rect.top) / rect.height) * 2 - 1);
+
+    raycaster.setFromCamera(ndc, camera);
+    const hits = raycaster.intersectObject(group, true);
+    const isHit = hits.length > 0;
+
+    if (isHit !== wasHovering.current) {
+      wasHovering.current = isHit;
+      onHoverChange(isHit);
+    }
+  });
+
+  return null;
+}
+
 function MagnetModel({
   url,
   onBounds,
@@ -125,20 +181,25 @@ export function MagnetViewer({
   className,
   preserveDrawingBuffer = false,
   onAspectChange,
+  onModelHoverChange,
   infoContent,
 }: {
   modelUrl: string;
   className?: string;
   preserveDrawingBuffer?: boolean;
   onAspectChange?: (aspect: number) => void;
+  /** Reporta ao componente pai (ex.: Homepage) se o rato está sobre a
+   * geometria visível do GLB — para que o pai possa dar prioridade real
+   * ao modelo em relação ao canvas de outros magnets sobrepostos. */
+  onModelHoverChange?: (hovering: boolean) => void;
   infoContent?: React.ReactNode;
 }) {
   const [radius, setRadius] = useState(1.5);
   const [modelMinY, setModelMinY] = useState(-1.5);
   const [bottomPercent, setBottomPercent] = useState(80);
-  const [hovering, setHovering] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
   const [hoveringModel, setHoveringModel] = useState(false);
+  const [isButtonHovered, setIsButtonHovered] = useState(false);
 
   const modelGroupRef = useRef<THREE.Group>(null);
   const lastPointerRef = useRef({ x: 0, y: 0 });
@@ -156,19 +217,18 @@ export function MagnetViewer({
     setBottomPercent((prev) => (Math.abs(prev - percent) < 0.1 ? prev : percent));
   }, []);
 
-  // Deteção real via raycasting: só dispara quando o ponteiro
-  // intersecta uma mesh visível do GLB (evento bubbling até ao grupo).
-  const handleModelPointerOver = useCallback((e: ThreeEvent<PointerEvent>) => {
-    setHoveringModel(true);
-  }, []);
-
-  // Sem isto, hoveringModel nunca volta a false.
-  const handleModelPointerOut = useCallback((e: ThreeEvent<PointerEvent>) => {
-    setHoveringModel(false);
-  }, []);
+  const handleModelHoverChange = useCallback(
+    (hovering: boolean) => {
+      setHoveringModel(hovering);
+      onModelHoverChange?.(hovering);
+    },
+    [onModelHoverChange]
+  );
 
   useEffect(() => {
     setHoveringModel(false);
+    onModelHoverChange?.(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelUrl]);
 
   useEffect(() => {
@@ -217,6 +277,8 @@ export function MagnetViewer({
     ? "grab"
     : "default";
 
+  const showChrome = hoveringModel || isButtonHovered || isRotating;
+
   return (
     <div
       className={className}
@@ -224,29 +286,19 @@ export function MagnetViewer({
         width: "100%",
         height: "100%",
         position: "relative",
-        // ESSENCIAL: sobrepõe-se ao "cursor-grab" herdado do card
-        // ancestral no Homepage.tsx. Sem isto, o cursor do pai
-        // "atravessa" toda a área do canvas, incluindo o fundo
-        // transparente, porque `cursor` é uma propriedade herdada.
         cursor: containerCursor,
       }}
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
     >
       <div style={{ width: "100%", height: "100%" }}>
         <Canvas
           camera={{ position: [0, 0, 5], fov: 45 }}
           gl={{ antialias: true, preserveDrawingBuffer }}
-          style={{ background: "transparent" }}
+          style={{ background: "transparent"}}
         >
           <ambientLight intensity={0.5} />
           <directionalLight position={[3, 3, 3]} intensity={15} />
           <Suspense fallback={<Fallback />}>
-            <group
-              ref={modelGroupRef}
-              onPointerOver={handleModelPointerOver}
-              onPointerOut={handleModelPointerOut}
-            >
+            <group ref={modelGroupRef}>
               <MagnetModel url={modelUrl} onBounds={handleBounds} />
             </group>
             <Environment preset="city" />
@@ -256,6 +308,10 @@ export function MagnetViewer({
             minY={modelMinY}
             onBottomPercentChange={handleBottomPercentChange}
           />
+          <ModelHoverProbe
+            modelGroupRef={modelGroupRef}
+            onHoverChange={handleModelHoverChange}
+          />
         </Canvas>
       </div>
 
@@ -263,6 +319,8 @@ export function MagnetViewer({
         type="button"
         aria-label="Rodar modelo"
         onPointerDown={handleRotateButtonPointerDown}
+        onMouseEnter={() => setIsButtonHovered(true)}
+        onMouseLeave={() => setIsButtonHovered(false)}
         style={{
           position: "absolute",
           left: "50%",
@@ -277,8 +335,8 @@ export function MagnetViewer({
           alignItems: "center",
           justifyContent: "center",
           cursor: isRotating ? "grabbing" : "grab",
-          opacity: hovering || isRotating ? 1 : 0,
-          pointerEvents: hovering || isRotating ? "auto" : "none",
+          opacity: showChrome ? 1 : 0,
+          pointerEvents: "auto",
           transition: "opacity 200ms ease",
           touchAction: "none",
           zIndex: 10,
@@ -287,12 +345,12 @@ export function MagnetViewer({
         <Rotate3d size={16} strokeWidth={2} color="#404040" />
       </button>
 
-      {infoContent && hovering && (
+      {infoContent && showChrome && (
         <div
           style={{
             position: "absolute",
             left: "50%",
-            top: `calc(${bottomPercent}% + ${BUTTON_GAP_PX + 38}px)`,
+            top: `calc(${bottomPercent}% + ${BUTTON_GAP_PX + 24}px)`,
             transform: "translateX(-50%)",
             width: 224,
             padding: "12px",

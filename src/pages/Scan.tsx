@@ -110,7 +110,7 @@ const startScanning = () => {
       <div className="container mx-auto px-4 py-20">
         <div className="max-w-2xl mx-auto">
 
-        <h2 className="text-8xl font-black uppercase mt-1 tracking-[-0.02em]">
+        <h2 className="text-5xl font-black uppercase mt-1 tracking-tight leading-[0.85]">
         Digitalizar QR Code
         </h2>
 

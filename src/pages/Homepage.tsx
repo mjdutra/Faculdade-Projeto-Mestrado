@@ -1,5 +1,5 @@
 import { MagnetViewer } from "@/components/magnet/MagnetViewer";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/config";
 import { Link } from "react-router-dom";
@@ -8,111 +8,56 @@ import { cn } from "@/lib/utils";
 import TopNav from "@/components/TopNav";
 import MagnetPage from "@/components/magnet/MagnetPage";
 import type { Magnet } from "@/types/magnet";
-import { useSearchParams } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
 
 const PROJECT_TITLE = "PROJECT";
+const MAGNET_SIZE = 400;
 
-const getMagnetSize = () => {
-  const width = window.innerWidth;
+const CLICK_DRAG_THRESHOLD = 6;
+const MAX_TILT_DEG = 10;
+const TILT_FACTOR = 0.6;
 
-  if (width < 640) return 500;
-  if (width < 768) return 600;
-  if (width < 1024) return 600;
-  return 1050;
-};
+const COLLISION_DISTANCE = MAGNET_SIZE * 0.55;
+const COLLISION_STRENGTH = 0.12;
+const MAX_PUSH_PER_FRAME = 4;
 
 interface Position {
   xPercent: number;
   yPercent: number;
 }
 
+interface DragStart {
+  id: string;
+  magnet: Magnet;
+  x: number;
+  y: number;
+  moved: boolean;
+}
+
 const centerBiasedRandom = () => (Math.random() + Math.random() + Math.random()) / 3;
 
-// ── Parâmetros da colisão suave entre ímanes ─────────────────────────
-const REPEL_PADDING = 2; // encolhe o raio de cada íman
-const BUFFER_FACTOR = 0.1; // zona de interação
-const STRENGTH = 0.06; // fração do overlap corrigida por frame
-
-// Distância mínima (px) para considerarmos que houve arrasto e não um click.
-const CLICK_MOVE_THRESHOLD = 6;
-
 const Homepage = () => {
-  const [searchParams] = useSearchParams();
-  const magnetId = searchParams.get("magnet");
   const [magnets, setMagnets] = useState<Magnet[]>([]);
-  const navigate = useNavigate();
-
   const [loading, setLoading] = useState(true);
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  const [modelHoverId, setModelHoverId] = useState<string | null>(null);
   const [positions, setPositions] = useState<Record<string, Position>>({});
   const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [magnetSize, setMagnetSize] = useState(getMagnetSize());
-
   const [selectedMagnet, setSelectedMagnet] = useState<Magnet | null>(null);
+
+  const [tilts, setTilts] = useState<Record<string, number>>({});
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const suppressClickRef = useRef(false);
-
-  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
-  const [aspectRatios, setAspectRatios] = useState<Record<string, number>>({});
-
-
-  const handleAspectChange = useCallback((magnetId: string, aspect: number) => {
-    setAspectRatios((prev) =>
-      prev[magnetId] === aspect ? prev : { ...prev, [magnetId]: aspect }
-    );
-  }, []);
-
-  // ── Refs loop de colisão ────────────────────────
   const positionsRef = useRef<Record<string, Position>>({});
-  useEffect(() => {
-    positionsRef.current = positions;
-  }, [positions]);
-
-  const draggingIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    draggingIdRef.current = draggingId;
-  }, [draggingId]);
-
-  const hoveredIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    hoveredIdRef.current = hoveredId;
-  }, [hoveredId]);
-
   const magnetsRef = useRef<Magnet[]>([]);
-  useEffect(() => {
-    magnetsRef.current = magnets;
-  }, [magnets]);
+  const draggingIdRef = useRef<string | null>(null);
 
-  const magnetSizeRef = useRef(magnetSize);
-  useEffect(() => {
-    magnetSizeRef.current = magnetSize;
-  }, [magnetSize]);
+  const dragStartRef = useRef<DragStart | null>(null);
+  const lastPointerRef = useRef({ x: 0, y: 0 });
 
-  const aspectRatiosRef = useRef<Record<string, number>>({});
-  useEffect(() => {
-    aspectRatiosRef.current = aspectRatios;
-  }, [aspectRatios]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 4000);
-    return () => clearTimeout(t);
-  }, [toast]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setMagnetSize(getMagnetSize());
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
+  useEffect(() => { positionsRef.current = positions; }, [positions]);
+  useEffect(() => { magnetsRef.current = magnets; }, [magnets]);
+  useEffect(() => { draggingIdRef.current = draggingId; }, [draggingId]);
 
   useEffect(() => {
     const fetchMagnets = async () => {
@@ -134,17 +79,6 @@ const Homepage = () => {
   }, []);
 
   useEffect(() => {
-    if (!magnetId || magnets.length === 0) return;
-
-    const magnet = magnets.find((m) => m.id === magnetId);
-
-    if (magnet) {
-      moveMagnetLeft(magnet.id);
-      setSelectedMagnet(magnet);
-    }
-  }, [magnetId, magnets]);
-
-  useEffect(() => {
     setPositions((prev) => {
       const next = { ...prev };
       magnets.forEach((magnet) => {
@@ -159,13 +93,10 @@ const Homepage = () => {
     });
   }, [magnets]);
 
-
   useEffect(() => {
     if (!draggingId) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      suppressClickRef.current = true;
-
       const container = containerRef.current;
       if (!container) return;
       const rect = container.getBoundingClientRect();
@@ -179,10 +110,35 @@ const Homepage = () => {
           yPercent: Math.min(96, Math.max(4, yPercent)),
         },
       }));
+
+      const start = dragStartRef.current;
+      if (start && start.id === draggingId && !start.moved) {
+        const totalDx = e.clientX - start.x;
+        const totalDy = e.clientY - start.y;
+        if (Math.hypot(totalDx, totalDy) > CLICK_DRAG_THRESHOLD) {
+          start.moved = true;
+        }
+      }
+
+      const dx = e.clientX - lastPointerRef.current.x;
+      lastPointerRef.current = { x: e.clientX, y: e.clientY };
+
+      setTilts((prev) => ({
+        ...prev,
+        [draggingId]: Math.max(-MAX_TILT_DEG, Math.min(MAX_TILT_DEG, dx * TILT_FACTOR)),
+      }));
     };
 
     const handleMouseUp = () => {
+      const start = dragStartRef.current;
       setDraggingId(null);
+      if (start) {
+        setTilts((prev) => ({ ...prev, [start.id]: 0 }));
+        if (!start.moved) {
+          setSelectedMagnet(start.magnet);
+        }
+      }
+      dragStartRef.current = null;
     };
 
     window.addEventListener("mousemove", handleMouseMove);
@@ -193,146 +149,132 @@ const Homepage = () => {
     };
   }, [draggingId]);
 
-
-  // ── Colisão entre ímanes ────────────────────────────────────
   useEffect(() => {
-    if (magnets.length < 2) return;
-
     let frameId: number;
 
     const step = () => {
       const container = containerRef.current;
-      if (!container) {
-        frameId = requestAnimationFrame(step);
-        return;
-      }
+      const currentMagnets = magnetsRef.current;
 
-      const rect = container.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) {
-        frameId = requestAnimationFrame(step);
-        return;
-      }
+      if (container && currentMagnets.length > 1) {
+        const rect = container.getBoundingClientRect();
+        const width = rect.width || 1;
+        const height = rect.height || 1;
 
-      const ids = magnets.map((m) => m.id);
-      const currentPositions = positionsRef.current;
-      const size = magnetSizeRef.current;
-      const aspects = aspectRatiosRef.current;
-      const draggedId = draggingIdRef.current;
+        const current = positionsRef.current;
+        const ids = currentMagnets.map((m) => m.id).filter((id) => current[id]);
 
-      const centers: Record<string, { x: number; y: number }> = {};
-      const radii: Record<string, number> = {};
+        const px: Record<string, { x: number; y: number }> = {};
+        ids.forEach((id) => {
+          px[id] = {
+            x: (current[id].xPercent / 100) * width,
+            y: (current[id].yPercent / 100) * height,
+          };
+        });
 
-      ids.forEach((id) => {
-        const pos = currentPositions[id];
-        if (!pos) return;
+        const displacement: Record<string, { x: number; y: number }> = {};
+        ids.forEach((id) => {
+          displacement[id] = { x: 0, y: 0 };
+        });
 
-        const aspect = aspects[id] ?? 1;
-        const width = size * aspect;
-        const height = size;
+        for (let i = 0; i < ids.length; i++) {
+          for (let j = i + 1; j < ids.length; j++) {
+            const idA = ids[i];
+            const idB = ids[j];
+            const a = px[idA];
+            const b = px[idB];
 
-        centers[id] = {
-          x: (pos.xPercent / 100) * rect.width,
-          y: (pos.yPercent / 100) * rect.height,
-        };
-        radii[id] = ((width + height) / 4) * REPEL_PADDING;
-      });
+            let dx = b.x - a.x;
+            let dy = b.y - a.y;
+            let dist = Math.hypot(dx, dy);
 
-      const corrections: Record<string, { x: number; y: number }> = {};
-      ids.forEach((id) => (corrections[id] = { x: 0, y: 0 }));
+            if (dist < COLLISION_DISTANCE) {
+              if (dist < 0.01) {
+                dx = (Math.random() - 0.5) * 0.01;
+                dy = (Math.random() - 0.5) * 0.01;
+                dist = 0.01;
+              }
 
-      for (let i = 0; i < ids.length; i++) {
-        for (let j = i + 1; j < ids.length; j++) {
-          const a = ids[i];
-          const b = ids[j];
-          const ca = centers[a];
-          const cb = centers[b];
-          if (!ca || !cb) continue;
+              const overlap = COLLISION_DISTANCE - dist;
+              const nx = dx / dist;
+              const ny = dy / dist;
+              const push = Math.min(overlap * COLLISION_STRENGTH, MAX_PUSH_PER_FRAME);
 
-          let dx = cb.x - ca.x;
-          let dy = cb.y - ca.y;
-          let dist = Math.sqrt(dx * dx + dy * dy);
+              const aIsDragging = draggingIdRef.current === idA;
+              const bIsDragging = draggingIdRef.current === idB;
 
-          const combined = radii[a] + radii[b];
-          const bufferZone = combined * BUFFER_FACTOR;
-          if (dist >= bufferZone) continue;
-
-          // Dois ímanes exatamente sobrepostos: escolhe um eixo estável
-          if (dist < 0.001) {
-            dx = 1;
-            dy = 0;
-            dist = 0.001;
-          }
-
-          const nx = dx / dist;
-          const ny = dy / dist;
-
-          // 0 na fronteira da zona de interação, 1 em sobreposição total —
-          // a força diminui à medida que a distância aumenta.
-          const overlapRatio = 1 - dist / bufferZone;
-          const pushAmount = overlapRatio * combined * STRENGTH;
-
-          const isADragging = draggedId === a;
-          const isBDragging = draggedId === b;
-
-          if (isADragging && !isBDragging) {
-            corrections[b].x += nx * pushAmount * 2;
-            corrections[b].y += ny * pushAmount * 2;
-          } else if (isBDragging && !isADragging) {
-            corrections[a].x -= nx * pushAmount * 2;
-            corrections[a].y -= ny * pushAmount * 2;
-          } else if (!isADragging && !isBDragging) {
-            corrections[a].x -= nx * pushAmount;
-            corrections[a].y -= ny * pushAmount;
-            corrections[b].x += nx * pushAmount;
-            corrections[b].y += ny * pushAmount;
+              if (!aIsDragging) {
+                const factor = bIsDragging ? push * 2 : push;
+                displacement[idA].x -= nx * factor;
+                displacement[idA].y -= ny * factor;
+              }
+              if (!bIsDragging) {
+                const factor = aIsDragging ? push * 2 : push;
+                displacement[idB].x += nx * factor;
+                displacement[idB].y += ny * factor;
+              }
+            }
           }
         }
-      }
 
-      const hasCorrection = Object.values(corrections).some(
-        (c) => Math.abs(c.x) > 0.01 || Math.abs(c.y) > 0.01
-      );
+        let changed = false;
+        const next = { ...current };
 
-      if (hasCorrection) {
-        setPositions((prev) => {
-          const next = { ...prev };
-          ids.forEach((id) => {
-            if (id === draggedId) return;
-            const correction = corrections[id];
-            const pos = prev[id];
-            if (!pos || (!correction.x && !correction.y)) return;
-
+        ids.forEach((id) => {
+          const d = displacement[id];
+          if (Math.abs(d.x) > 0.01 || Math.abs(d.y) > 0.01) {
+            changed = true;
+            const newXPercent = ((px[id].x + d.x) / width) * 100;
+            const newYPercent = ((px[id].y + d.y) / height) * 100;
             next[id] = {
-              xPercent: Math.min(
-                98,
-                Math.max(2, pos.xPercent + (correction.x / rect.width) * 100)
-              ),
-              yPercent: Math.min(
-                96,
-                Math.max(4, pos.yPercent + (correction.y / rect.height) * 100)
-              ),
+              xPercent: Math.min(98, Math.max(2, newXPercent)),
+              yPercent: Math.min(96, Math.max(4, newYPercent)),
             };
-          });
-          return next;
+          }
         });
-      }
 
+        if (changed) {
+          positionsRef.current = next;
+          setPositions(next);
+        }
+      }
       frameId = requestAnimationFrame(step);
     };
-
     frameId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frameId);
-  }, [magnets]);
+  }, []);
 
-  const moveMagnetLeft = (magnetId: string) => {
-    setPositions((prev) => ({
-      ...prev,
-      [magnetId]: {
-        ...prev[magnetId],
-        xPercent: 28,
-      },
-    }));
-  };
+  const handleModelHoverChange = useCallback((id: string, hovering: boolean) => {
+    setModelHoverId((prev) => {
+      if (hovering) return id;
+      return prev === id ? null : prev;
+    });
+  }, []);
+
+  const handleMagnetDeleted = useCallback(
+    (id: string, assetsFullyRemoved: boolean) => {
+      setMagnets((prev) => prev.filter((m) => m.id !== id));
+      setPositions((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      setTilts((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      setSelectedMagnet(null);
+      setModelHoverId((prev) => (prev === id ? null : prev));
+
+      if (!assetsFullyRemoved) {
+        console.warn(
+          `Magnet ${id} removido, mas alguns assets podem não ter sido eliminados na íntegra.`
+        );
+      }
+    },
+    []
+  );
 
   return (
     <div className="min-h-screen w-full bg-white">
@@ -342,7 +284,7 @@ const Homepage = () => {
         ref={containerRef}
         className="relative w-full h-screen flex items-center justify-center overflow-hidden"
       >
-        <h1 className="text-[18vw] tracking-wide leading-none font-black tracking-tight text-black select-none whitespace-nowrap">
+        <h1 className="text-[14vw] tracking-wide leading-none font-black tracking-tight text-black select-none whitespace-nowrap">
           {PROJECT_TITLE}
         </h1>
 
@@ -350,52 +292,57 @@ const Homepage = () => {
           magnets.map((magnet) => {
             const pos = positions[magnet.id];
             if (!pos) return null;
-
             const isDragging = draggingId === magnet.id;
-            const aspect = aspectRatios[magnet.id] ?? 1;
+            const isModelHovered = modelHoverId === magnet.id;
+            const tilt = tilts[magnet.id] ?? 0;
 
             return (
               <div
-                  key={magnet.id}
-                  data-magnet-id={magnet.id}
-                  className={cn(
-                    "absolute select-none cursor-grab active:cursor-grabbing",
-                    isDragging ? "z-40" : hoveredId === magnet.id ? "z-30" : "z-20"
-                  )}
-                  style={{
-                    left: `${pos.xPercent}%`,
-                    top: `${pos.yPercent}%`,
-                    width: magnetSize * aspect,
-                    height: magnetSize,
-                    transform: "translate(-50%, -50%)",
-                    transition: "width 200ms ease",
-                  }}
-                  onPointerDown={() => {
-                    suppressClickRef.current = false;
-                    setDraggingId(magnet.id);
-                  }}
-                  onMouseEnter={() => setHoveredId(magnet.id)}
-                  onMouseLeave={() => setHoveredId(null)}
-                  onClick={() => {
-                    if (!suppressClickRef.current) {
-                      moveMagnetLeft(magnet.id);
-                      setSelectedMagnet(magnet);
-                    }
-                  }}
-                >
-                  <MagnetViewer
-                    modelUrl={magnet.modelURL}
-                    onAspectChange={(a) => handleAspectChange(magnet.id, a)}
-                    infoContent={
-                      hoveredId === magnet.id && !isDragging ? (
-                        <>
-                          <p className="font-semibold">{magnet.titulo}</p>
-                          <p className="text-gray-500">{magnet.localização}</p>
-                          <p className="mt-1 text-gray-600">{magnet.descrição}</p>
-                        </>
-                      ) : undefined
-                    }
-                  />
+                key={magnet.id}
+                className={cn(
+                  "absolute select-none",
+                  isDragging ? "z-50" : isModelHovered ? "z-40" : "z-20"
+                )}
+                style={{
+                  left: `${pos.xPercent}%`,
+                  top: `${pos.yPercent}%`,
+                  width: MAGNET_SIZE,
+                  height: MAGNET_SIZE,
+                  transform: `translate(-50%, -50%) rotate(${tilt}deg)`,
+                  transition: isDragging
+                    ? "transform 120ms ease-out"
+                    : "transform 450ms cubic-bezier(0.22, 1, 0.36, 1)",
+                  pointerEvents: isDragging || isModelHovered ? "auto" : "none",
+                  cursor: isDragging ? "grabbing" : undefined,
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  dragStartRef.current = {
+                    id: magnet.id,
+                    magnet,
+                    x: e.clientX,
+                    y: e.clientY,
+                    moved: false,
+                  };
+                  lastPointerRef.current = { x: e.clientX, y: e.clientY };
+                  setDraggingId(magnet.id);
+                }}
+              >
+                <MagnetViewer
+                  modelUrl={magnet.modelURL}
+                  onModelHoverChange={(hovering) =>
+                    handleModelHoverChange(magnet.id, hovering)
+                  }
+                  infoContent={
+                    isModelHovered && !isDragging ? (
+                      <>
+                        <p className="font-semibold">{magnet.titulo}</p>
+                        <p className="text-gray-500">{magnet.localização}</p>
+                        <p className="mt-1 text-gray-600">{magnet.descrição}</p>
+                      </>
+                    ) : undefined
+                  }
+                />
               </div>
             );
           })}
@@ -410,47 +357,9 @@ const Homepage = () => {
 
       <MagnetPage
         magnet={selectedMagnet}
-        onClose={() => {
-          if (selectedMagnet) {
-            setPositions((prev) => ({
-              ...prev,
-              [selectedMagnet.id]: {
-                xPercent: 20 + centerBiasedRandom() * 60,
-                yPercent: prev[selectedMagnet.id]?.yPercent ?? 50,
-              },
-            }));
-          }
-          setSelectedMagnet(null);
-          navigate("/", { replace: true });
-        }}
-        onDeleted={(id, assetsFullyRemoved) => {
-          setMagnets((prev) => prev.filter((m) => m.id !== id));
-          setPositions((prev) => {
-            const { [id]: _removed, ...rest } = prev;
-            return rest;
-          });
-          setSelectedMagnet(null);
-          setToast({
-            type: assetsFullyRemoved ? "success" : "error",
-            message: assetsFullyRemoved
-              ? "Magnet eliminado com sucesso."
-              : "Magnet eliminado, mas alguns ficheiros associados não foram removidos.",
-          });
-          navigate("/", { replace: true });
-        }}
+        onClose={() => setSelectedMagnet(null)}
+        onDeleted={handleMagnetDeleted}
       />
-
-      {toast && (
-        <div
-          className={`fixed bottom-6 left-6 z-[100000] px-4 py-3 border text-sm font-medium ${
-            toast.type === "success"
-              ? "bg-black text-white border-black"
-              : "bg-red-600 text-white border-red-600"
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
     </div>
   );
 };

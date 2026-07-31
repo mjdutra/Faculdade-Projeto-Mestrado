@@ -3,6 +3,16 @@
 import { useCallback, useRef } from "react";
 import { Pause, Play, Maximize, Minimize, Volume2, VolumeX } from "lucide-react";
 
+export interface VideoMarker {
+  id: string;
+  timestamp: number;
+  /** Duração (segundos) da janela em que o hotspot está ativo. Ignorado se `permanent`. */
+  duration?: number;
+  /** Se true, a janela ativa estende-se até ao fim do vídeo. */
+  permanent?: boolean;
+  label?: string;
+}
+
 interface VideoControlsProps {
   isPlaying: boolean;
   currentTime: number;
@@ -10,6 +20,8 @@ interface VideoControlsProps {
   volume: number;
   isMuted: boolean;
   isFullscreen?: boolean;
+  /** Pontos de Interesse a marcar na timeline (opcional — só desktop). */
+  markers?: VideoMarker[];
   onPlayPause: () => void;
   onSeek: (time: number) => void;
   onVolumeChange?: (value: number) => void;
@@ -31,6 +43,7 @@ export default function VideoControls({
   volume,
   isMuted,
   isFullscreen = false,
+  markers,
   onPlayPause,
   onSeek,
   onVolumeChange,
@@ -76,6 +89,10 @@ export default function VideoControls({
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  // Mínimo de largura visível para janelas muito curtas (senão o red
+  // range fica invisível ou é só 1px).
+  const MIN_RANGE_PERCENT = 0.6;
+
   return (
     <div className="absolute bottom-0 left-0 right-0 z-10 px-3 py-2 bg-gradient-to-t from-black/85 to-transparent flex flex-col gap-1.5">
       {/* Timeline */}
@@ -86,16 +103,61 @@ export default function VideoControls({
         onPointerUp={handlePointerUp}
         className="relative h-3 w-full cursor-pointer flex items-center touch-none"
       >
-        <div className="h-1 w-full rounded-full bg-white/30">
+        <div className="relative h-1 w-full rounded-full bg-white/30 overflow-hidden">
+          {/* Janelas de atividade dos hotspots — a vermelho, por baixo do
+              progresso já visto (branco), para se perceber de imediato
+              onde é que cada ponto vai aparecer. */}
+          {duration > 0 &&
+            markers?.map((marker) => {
+              const startPercent = Math.min(100, Math.max(0, (marker.timestamp / duration) * 100));
+              const endTime = marker.permanent
+                ? duration
+                : Math.min(duration, marker.timestamp + (marker.duration ?? 5));
+              const endPercent = Math.min(100, Math.max(startPercent, (endTime / duration) * 100));
+              const widthPercent = Math.max(endPercent - startPercent, MIN_RANGE_PERCENT);
+
+              return (
+                <div
+                  key={`range-${marker.id}`}
+                  className="absolute inset-y-0 bg-red-500/70 pointer-events-none"
+                  style={{ left: `${startPercent}%`, width: `${widthPercent}%` }}
+                />
+              );
+            })}
+
           <div
             className="h-1 rounded-full bg-white"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
+
         <div
           className="absolute h-3 w-3 rounded-full bg-white shadow pointer-events-none"
           style={{ left: `calc(${progressPercent}% - 6px)` }}
         />
+
+        {/* Marcador clicável no início de cada janela — impede o "seek"
+            da timeline por baixo (stopPropagation no pointerDown) para
+            que clicar salte exatamente para o início do hotspot. */}
+        {duration > 0 &&
+          markers?.map((marker) => {
+            const percent = Math.min(100, Math.max(0, (marker.timestamp / duration) * 100));
+            return (
+              <button
+                key={marker.id}
+                type="button"
+                title={marker.label || formatTime(marker.timestamp)}
+                aria-label={`Ir para ${marker.label || formatTime(marker.timestamp)}`}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSeek(marker.timestamp);
+                }}
+                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-white/80 hover:scale-125 hover:ring-red-300 transition-transform"
+                style={{ left: `${percent}%` }}
+              />
+            );
+          })}
       </div>
 
       {/* Play/Pause, tempo, volume, fullscreen */}

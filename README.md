@@ -38,4 +38,5 @@ VITE_CLOUDINARYAPISECRET=...
 
 # correr em desenvolvimento
 npm run dev
+npm run preview
 

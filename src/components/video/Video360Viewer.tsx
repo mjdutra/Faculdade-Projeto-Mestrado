@@ -36,7 +36,13 @@ interface CameraControllerHandle {
   lookAt: (yaw: number, pitch: number) => void;
 }
 
-const xrStore = createXRStore();
+const xrStore = createXRStore({
+  controller: {
+    rayPointer: {
+      rayModel: { color: "#38bdf8" },
+    },
+  },
+});
 
 const CameraController = forwardRef<CameraControllerHandle, {}>(
   function CameraController(_, ref) {
@@ -45,7 +51,10 @@ const CameraController = forwardRef<CameraControllerHandle, {}>(
 
     useImperativeHandle(ref, () => ({
       lookAt: (yaw: number, pitch: number) => {
-        // No modo VR a câmara é controlada pelo headset.
+        // No modo VR a câmara é controlada pelo headset (a cabeça controla
+        // a visão). Reorientar programaticamente exigiria rodar a origem
+        // XR em vez da câmara — fica para a Fase 4 ("eventualmente adaptar
+        // lookAt() para VR"), por agora mantemos o no-op.
         if (gl.xr.isPresenting) return;
 
         const dir = yawPitchToVector(yaw, pitch, 1);
@@ -73,21 +82,22 @@ const CameraController = forwardRef<CameraControllerHandle, {}>(
 );
 
 
-
-
-
 function Sphere({
   video,
   points,
   isAddingPOI,
   onPositionClick,
   onHoverChange,
+  selectedHotspotId,
+  onSelectChange,
 }: {
   video: HTMLVideoElement;
   points: PointOfInterest[];
   isAddingPOI: boolean;
   onPositionClick?: (position: { yaw: number; pitch: number }) => void;
   onHoverChange?: (id: string, hovering: boolean) => void;
+  selectedHotspotId?: string | null;
+  onSelectChange?: (id: string) => void;
 }) {
   const texture = useMemo(() => {
     const t = new THREE.VideoTexture(video);
@@ -136,15 +146,14 @@ function Sphere({
           video={video}
           position={yawPitchToVector(point.yaw, point.pitch, 49.8)}
           isAddingPOI={isAddingPOI}
+          isSelected={selectedHotspotId === point.id}
           onHoverChange={onHoverChange}
+          onSelectChange={onSelectChange}
         />
       ))}
     </>
   );
 }
-
-
-
 
 
 const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(function Video360Viewer(
@@ -155,6 +164,9 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
   const cameraControllerRef = useRef<CameraControllerHandle>(null);
   const [hoveredHotspotId, setHoveredHotspotId] = useState<string | null>(null);
+
+  // ── Fase 3: selecção via trigger
+  const [selectedHotspotId, setSelectedHotspotId] = useState<string | null>(null);
 
 
 
@@ -170,6 +182,10 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
     videoRef.current = v;
     setVideoEl(v);
     v.play().catch(() => {});
+
+
+    setSelectedHotspotId(null);
+    setHoveredHotspotId(null);
 
     return () => {
       v.pause();
@@ -244,7 +260,11 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
       return prev === id ? null : prev;
     });
   }, []);
-  
+
+  const handleSelectChange = useCallback((id: string) => {
+    setSelectedHotspotId((prev) => (prev === id ? null : id));
+  }, []);
+
   const cursor = hoveredHotspotId ? "pointer" : isAddingPOI ? "crosshair" : "grab";
 
   return (
@@ -261,6 +281,8 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
               isAddingPOI={isAddingPOI}
               onPositionClick={onPositionClick}
               onHoverChange={handleHoverChange}
+              selectedHotspotId={selectedHotspotId}
+              onSelectChange={handleSelectChange}
             />
 
             <CameraController ref={cameraControllerRef} />

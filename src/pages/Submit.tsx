@@ -467,6 +467,13 @@ const Submit = () => {
                           volume={volume}
                           isMuted={isMuted}
                           isFullscreen={isFullscreen}
+                          markers={points.map((p) => ({
+                            id: p.id,
+                            timestamp: p.timestamp,
+                            duration: p.duration,
+                            permanent: p.permanent,
+                            label: p.title || undefined,
+                          }))}
                           onPlayPause={() => viewerRef.current?.togglePlay()}
                           onSeek={(time) => viewerRef.current?.seek(time)}
                           onVolumeChange={(value) => viewerRef.current?.setVolume(value)}

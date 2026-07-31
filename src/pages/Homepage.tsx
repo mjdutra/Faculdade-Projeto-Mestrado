@@ -9,7 +9,7 @@ import TopNav from "@/components/TopNav";
 import MagnetPage from "@/components/magnet/MagnetPage";
 import type { Magnet } from "@/types/magnet";
 
-const PROJECT_TITLE = "PROJECT";
+const PROJECT_TITLE = "MAGNET";
 const MAGNET_SIZE = 400;
 
 const CLICK_DRAG_THRESHOLD = 6;

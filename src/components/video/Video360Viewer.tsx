@@ -5,7 +5,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
-
+import { XR, createXRStore } from "@react-three/xr";
 import { PointOfInterest } from "@/components/poi/PointOfInterest";
 import { Hotspot } from "@/components/poi/Hotspot";
 import { yawPitchToVector, vectorToYawPitch } from "@/lib/spherical";
@@ -36,22 +36,41 @@ interface CameraControllerHandle {
   lookAt: (yaw: number, pitch: number) => void;
 }
 
-const CameraController = forwardRef<CameraControllerHandle, {}>(function CameraController(_, ref) {
-  const { camera } = useThree();
-  const orbitRef = useRef<any>(null);
+const xrStore = createXRStore();
 
-  useImperativeHandle(ref, () => ({
-    lookAt: (yaw: number, pitch: number) => {
-      const dir = yawPitchToVector(yaw, pitch, 1);
-      const distance = camera.position.length() || 0.1;
-      camera.position.copy(dir.clone().multiplyScalar(-distance));
-      camera.lookAt(0, 0, 0);
-      orbitRef.current?.update();
-    },
-  }));
+const CameraController = forwardRef<CameraControllerHandle, {}>(
+  function CameraController(_, ref) {
+    const { camera, gl } = useThree();
+    const orbitRef = useRef<any>(null);
 
-  return <OrbitControls ref={orbitRef} enableZoom={false} enablePan={false} rotateSpeed={-0.4} />;
-});
+    useImperativeHandle(ref, () => ({
+      lookAt: (yaw: number, pitch: number) => {
+        // No modo VR a câmara é controlada pelo headset.
+        if (gl.xr.isPresenting) return;
+
+        const dir = yawPitchToVector(yaw, pitch, 1);
+        const distance = camera.position.length() || 0.1;
+
+        camera.position.copy(
+          dir.clone().multiplyScalar(-distance)
+        );
+
+        camera.lookAt(0, 0, 0);
+        orbitRef.current?.update();
+      },
+    }));
+
+    return (
+      <OrbitControls
+        ref={orbitRef}
+        enableZoom={false}
+        enablePan={false}
+        rotateSpeed={-0.4}
+        enabled={!gl.xr.isPresenting}
+      />
+    );
+  }
+);
 
 
 
@@ -233,17 +252,34 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
       {videoEl && (
         <Canvas
           camera={{ position: [0, 0, 0.1] }}
-          style={{ width: "100%", height: "100%", cursor}}
+          style={{ width: "100%", height: "100%", cursor }}
         >
-          <Sphere video={videoEl} 
-          points={points} 
-          isAddingPOI={isAddingPOI} 
-          onPositionClick={onPositionClick} 
-          onHoverChange={handleHoverChange} />
+          <XR store={xrStore}>
+            <Sphere
+              video={videoEl}
+              points={points}
+              isAddingPOI={isAddingPOI}
+              onPositionClick={onPositionClick}
+              onHoverChange={handleHoverChange}
+            />
 
-          <CameraController ref={cameraControllerRef} />
+            <CameraController ref={cameraControllerRef} />
+          </XR>
         </Canvas>
       )}
+      <button
+          type="button"
+          onClick={async () => {
+            try {
+              await videoRef.current?.play();
+              await xrStore.enterVR();
+            } catch (error) {
+              console.error("Erro ao iniciar VR:", error);
+            }
+          }}
+          className="absolute bottom-4 right-4 z-50 rounded-lg bg-white px-4 py-2 font-medium text-black shadow-lg"
+        > Ver em VR
+    </button>
     </div>
   );
 });

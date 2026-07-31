@@ -6,9 +6,12 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { XR, createXRStore } from "@react-three/xr";
+import { ChevronUp } from "lucide-react";
 import { PointOfInterest } from "@/components/poi/PointOfInterest";
 import { Hotspot } from "@/components/poi/Hotspot";
 import { yawPitchToVector, vectorToYawPitch } from "@/lib/spherical";
+import { isPointActive } from "@/lib/poi";
+import { getEdgeIndicator, type EdgeIndicator } from "@/lib/screenEdge";
 
 export interface Video360ViewerHandle {
   play: () => void;
@@ -36,6 +39,10 @@ interface CameraControllerHandle {
   lookAt: (yaw: number, pitch: number) => void;
 }
 
+interface IndicatorState extends EdgeIndicator {
+  id: string;
+}
+
 const xrStore = createXRStore({
   controller: {
     rayPointer: {
@@ -51,10 +58,6 @@ const CameraController = forwardRef<CameraControllerHandle, {}>(
 
     useImperativeHandle(ref, () => ({
       lookAt: (yaw: number, pitch: number) => {
-        // No modo VR a câmara é controlada pelo headset (a cabeça controla
-        // a visão). Reorientar programaticamente exigiria rodar a origem
-        // XR em vez da câmara — fica para a Fase 4 ("eventualmente adaptar
-        // lookAt() para VR"), por agora mantemos o no-op.
         if (gl.xr.isPresenting) return;
 
         const dir = yawPitchToVector(yaw, pitch, 1);
@@ -80,6 +83,62 @@ const CameraController = forwardRef<CameraControllerHandle, {}>(
     );
   }
 );
+
+
+// ── Indicador de borda ─────────────────────────────────────────────────
+// Corre dentro do Canvas (precisa da câmara via useThree). A cada frame
+// calcula quais os POIs activos que estão fora do frustum e reporta as
+// suas posições/ângulos de seta para o componente pai, que os desenha
+// como overlay 2D por cima do Canvas. Desligado durante sessão VR
+// imersiva — nesse modo não há overlay 2D visível no headset.
+function OffscreenIndicators({
+  points,
+  video,
+  onUpdate,
+}: {
+  points: PointOfInterest[];
+  video: HTMLVideoElement;
+  onUpdate: (indicators: IndicatorState[]) => void;
+}) {
+  const { camera, size, gl } = useThree();
+  const lastSignature = useRef<string>("");
+
+  useFrame(() => {
+    if (gl.xr.isPresenting || !(camera instanceof THREE.PerspectiveCamera)) {
+      if (lastSignature.current !== "") {
+        lastSignature.current = "";
+        onUpdate([]);
+      }
+      return;
+    }
+
+    const t = video.currentTime;
+    const next: IndicatorState[] = [];
+
+    for (const point of points) {
+      if (!isPointActive(point, t)) continue;
+
+      const worldPos = yawPitchToVector(point.yaw, point.pitch, 49.8);
+      const indicator = getEdgeIndicator(camera, worldPos, size.width, size.height);
+      if (indicator) {
+        next.push({ id: point.id, ...indicator });
+      }
+    }
+
+    // Evita re-renders quando nada mudou de forma relevante (arredondado
+    // ao pixel/grau mais próximo).
+    const signature = next
+      .map((i) => `${i.id}:${Math.round(i.x)}:${Math.round(i.y)}:${Math.round(i.angle)}`)
+      .join("|");
+
+    if (signature !== lastSignature.current) {
+      lastSignature.current = signature;
+      onUpdate(next);
+    }
+  });
+
+  return null;
+}
 
 
 function Sphere({
@@ -164,9 +223,8 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
   const cameraControllerRef = useRef<CameraControllerHandle>(null);
   const [hoveredHotspotId, setHoveredHotspotId] = useState<string | null>(null);
-
-  // ── Fase 3: selecção via trigger
   const [selectedHotspotId, setSelectedHotspotId] = useState<string | null>(null);
+  const [offscreenIndicators, setOffscreenIndicators] = useState<IndicatorState[]>([]);
 
 
 
@@ -183,9 +241,9 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
     setVideoEl(v);
     v.play().catch(() => {});
 
-
     setSelectedHotspotId(null);
     setHoveredHotspotId(null);
+    setOffscreenIndicators([]);
 
     return () => {
       v.pause();
@@ -285,10 +343,31 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
               onSelectChange={handleSelectChange}
             />
 
+            <OffscreenIndicators
+              points={points}
+              video={videoEl}
+              onUpdate={setOffscreenIndicators}
+            />
+
             <CameraController ref={cameraControllerRef} />
           </XR>
         </Canvas>
       )}
+
+      {offscreenIndicators.map((indicator) => (
+        <div
+          key={indicator.id}
+          className="absolute z-30 pointer-events-none"
+          style={{
+            left: indicator.x,
+            top: indicator.y,
+            transform: `translate(-50%, -50%) rotate(${indicator.angle}deg) scale(2)`,
+          }}
+        >
+          <ChevronUp className="w-6 h-6 text-white drop-shadow-md" strokeWidth={2.5} />
+        </div>
+      ))}
+
       <button
           type="button"
           onClick={async () => {

@@ -6,6 +6,7 @@ import { useXR } from "@react-three/xr";
 import * as THREE from "three";
 import { PointOfInterest } from "./PointOfInterest";
 import { HotspotTooltip } from "./HotspotTooltip";
+import { isPointActive } from "@/lib/poi";
 
 interface HotspotProps {
   point: PointOfInterest;
@@ -17,7 +18,6 @@ interface HotspotProps {
   onSelectChange?: (id: string) => void;
 }
 
-// POI em VR
 const BASE_RADIUS = { desktop: 0.6, vr: 1.1 };
 const HOVER_RADIUS = { desktop: 0.9, vr: 1.6 };
 const PULSE_SPEED = 3;
@@ -26,17 +26,13 @@ const PULSE_AMOUNT = 0.12;
 export function Hotspot({ point, position, video, onHoverChange, isSelected = false, onSelectChange }: HotspotProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
-
   const inVR = useXR((state) => state.mode === "immersive-vr");
 
   useFrame(({ clock }) => {
     const mesh = meshRef.current;
     if (!mesh) return;
 
-    const t = video.currentTime;
-    const isVisible = point.permanent
-      ? t >= point.timestamp
-      : t >= point.timestamp && t <= point.timestamp + (point.duration ?? 5);
+    const isVisible = isPointActive(point, video.currentTime);
 
     mesh.visible = isVisible;
 
@@ -58,7 +54,6 @@ export function Hotspot({ point, position, video, onHoverChange, isSelected = fa
       mesh.scale.setScalar(1);
     }
   });
-
 
   useEffect(() => {
     return () => {

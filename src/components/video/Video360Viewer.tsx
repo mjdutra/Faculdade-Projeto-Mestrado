@@ -46,7 +46,10 @@ interface IndicatorState extends EdgeIndicator {
 const xrStore = createXRStore({
   controller: {
     rayPointer: {
-      rayModel: { color: "#38bdf8" },
+      minDistance: 0,
+      rayModel: {
+        color: "#38bdf8",
+      },
     },
   },
 });
@@ -85,59 +88,72 @@ const CameraController = forwardRef<CameraControllerHandle, {}>(
 );
 
 
-// ── Indicador de borda ─────────────────────────────────────────────────
-// Corre dentro do Canvas (precisa da câmara via useThree). A cada frame
-// calcula quais os POIs activos que estão fora do frustum e reporta as
-// suas posições/ângulos de seta para o componente pai, que os desenha
-// como overlay 2D por cima do Canvas. Desligado durante sessão VR
-// imersiva — nesse modo não há overlay 2D visível no headset.
 function OffscreenIndicators({
   points,
   video,
   onUpdate,
-}: {
-  points: PointOfInterest[];
-  video: HTMLVideoElement;
-  onUpdate: (indicators: IndicatorState[]) => void;
-}) {
-  const { camera, size, gl } = useThree();
-  const lastSignature = useRef<string>("");
+  }: {
+    points: PointOfInterest[];
+    video: HTMLVideoElement;
+    onUpdate: (indicators: IndicatorState[]) => void;
+  }) {
+    const { camera, size, gl } = useThree();
+    const lastSignature = useRef<string>("");
 
-  useFrame(() => {
-    if (gl.xr.isPresenting || !(camera instanceof THREE.PerspectiveCamera)) {
-      if (lastSignature.current !== "") {
-        lastSignature.current = "";
-        onUpdate([]);
+    useFrame(() => {
+      if (
+        gl.xr.isPresenting ||
+        !(camera instanceof THREE.PerspectiveCamera)
+      ) {
+        if (lastSignature.current !== "") {
+          lastSignature.current = "";
+          onUpdate([]);
+        }
+
+        return;
       }
-      return;
-    }
 
-    const t = video.currentTime;
-    const next: IndicatorState[] = [];
+      const t = video.currentTime;
+      const next: IndicatorState[] = [];
 
-    for (const point of points) {
-      if (!isPointActive(point, t)) continue;
+      for (const point of points) {
+        if (!isPointActive(point, t)) continue;
 
-      const worldPos = yawPitchToVector(point.yaw, point.pitch, 49.8);
-      const indicator = getEdgeIndicator(camera, worldPos, size.width, size.height);
-      if (indicator) {
-        next.push({ id: point.id, ...indicator });
+        const worldPos = yawPitchToVector(
+          point.yaw,
+          point.pitch,
+          49.8
+        );
+
+        const indicator = getEdgeIndicator(
+          camera,
+          worldPos,
+          size.width,
+          size.height
+        );
+
+        if (indicator) {
+          next.push({
+            id: point.id,
+            ...indicator,
+          });
+        }
       }
-    }
 
-    // Evita re-renders quando nada mudou de forma relevante (arredondado
-    // ao pixel/grau mais próximo).
-    const signature = next
-      .map((i) => `${i.id}:${Math.round(i.x)}:${Math.round(i.y)}:${Math.round(i.angle)}`)
-      .join("|");
+      const signature = next
+        .map(
+          (i) =>
+            `${i.id}:${Math.round(i.x)}:${Math.round(i.y)}:${Math.round(i.angle)}`
+        )
+        .join("|");
 
-    if (signature !== lastSignature.current) {
-      lastSignature.current = signature;
-      onUpdate(next);
-    }
-  });
+      if (signature !== lastSignature.current) {
+        lastSignature.current = signature;
+        onUpdate(next);
+      }
+    });
 
-  return null;
+    return null;
 }
 
 

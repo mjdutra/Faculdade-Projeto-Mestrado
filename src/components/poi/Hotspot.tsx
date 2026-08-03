@@ -23,7 +23,14 @@ const HOVER_RADIUS = { desktop: 0.9, vr: 1.6 };
 const PULSE_SPEED = 3;
 const PULSE_AMOUNT = 0.12;
 
-export function Hotspot({ point, position, video, onHoverChange, isSelected = false, onSelectChange }: HotspotProps) {
+export function Hotspot({ 
+  point, 
+  position, 
+  video, 
+  onHoverChange, 
+  isSelected = false, 
+  onSelectChange 
+}: HotspotProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
   const inVR = useXR((state) => state.mode === "immersive-vr");
@@ -60,7 +67,6 @@ export function Hotspot({ point, position, video, onHoverChange, isSelected = fa
       if (hovered) onHoverChange?.(point.id, false);
       if (isSelected) onSelectChange?.(point.id);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const radius = hovered
@@ -74,18 +80,27 @@ export function Hotspot({ point, position, video, onHoverChange, isSelected = fa
     <mesh
       ref={meshRef}
       position={position}
-      onPointerOver={(e) => {
+      pointerEventsOrder={100}
+
+       onPointerOver={(e) => {
         e.stopPropagation();
-        setHovered(true);
-        onHoverChange?.(point.id, true);
+
+        if (!hovered) {
+          setHovered(true);
+          onHoverChange?.(point.id, true);
+        }
       }}
+
       onPointerOut={(e) => {
         e.stopPropagation();
+
         setHovered(false);
         onHoverChange?.(point.id, false);
       }}
+
       onClick={(e) => {
         e.stopPropagation();
+
         onSelectChange?.(point.id);
       }}
     >

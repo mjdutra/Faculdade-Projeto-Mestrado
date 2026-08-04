@@ -48,7 +48,7 @@ const xrStore = createXRStore({
     rayPointer: {
       minDistance: 0,
       rayModel: {
-        color: "#38bdf8",
+        color: "#ff0000",
       },
     },
   },

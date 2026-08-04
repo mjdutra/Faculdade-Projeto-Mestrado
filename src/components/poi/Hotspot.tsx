@@ -18,8 +18,8 @@ interface HotspotProps {
   onSelectChange?: (id: string) => void;
 }
 
-const BASE_RADIUS = { desktop: 0.6, vr: 1.1 };
-const HOVER_RADIUS = { desktop: 0.9, vr: 1.6 };
+const BASE_RADIUS = { desktop: 0.8, vr: 1.5 };
+const HOVER_RADIUS = { desktop: 1, vr: 2 };
 const PULSE_SPEED = 3;
 const PULSE_AMOUNT = 0.12;
 
@@ -32,8 +32,14 @@ export function Hotspot({
   onSelectChange 
 }: HotspotProps) {
   const meshRef = useRef<THREE.Mesh>(null);
+  const pointerDownRef = useRef(false);
   const [hovered, setHovered] = useState(false);
   const inVR = useXR((state) => state.mode === "immersive-vr");
+
+  const handleSelect = (e: any) => {
+    e.stopPropagation();
+    onSelectChange?.(point.id);
+  };
 
   useFrame(({ clock }) => {
     const mesh = meshRef.current;
@@ -84,7 +90,6 @@ export function Hotspot({
 
        onPointerOver={(e) => {
         e.stopPropagation();
-
         if (!hovered) {
           setHovered(true);
           onHoverChange?.(point.id, true);
@@ -93,15 +98,30 @@ export function Hotspot({
 
       onPointerOut={(e) => {
         e.stopPropagation();
-
         setHovered(false);
         onHoverChange?.(point.id, false);
       }}
 
-      onClick={(e) => {
-        e.stopPropagation();
+      onPointerDown={(e) => {
+          e.stopPropagation();
+          if (inVR) {
+            pointerDownRef.current = true;
+          }
+        }}
 
-        onSelectChange?.(point.id);
+        onPointerUp={(e) => {
+          e.stopPropagation();
+          if (inVR && pointerDownRef.current) {
+            pointerDownRef.current = false;
+            onSelectChange?.(point.id);
+          }
+        }}
+
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!inVR) {
+            onSelectChange?.(point.id);
+          }
       }}
     >
       <sphereGeometry args={[radius, 16, 16]} />

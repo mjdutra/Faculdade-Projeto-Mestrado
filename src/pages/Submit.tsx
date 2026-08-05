@@ -1,7 +1,7 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/firebase/config";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, Timestamp } from "firebase/firestore";
 import { uploadFile } from "@/services/cloudinary";
 import TopNav from "@/components/TopNav";
 import VideoControls from "@/components/video/VideoControls";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Video, Star, Box, ChevronRight, ChevronLeft, Check, Plus, Trash2, Crosshair } from "lucide-react";
+import { MapPin, Video, Star, Box, Calendar, ChevronRight, ChevronLeft, Check, Plus, Trash2, Crosshair } from "lucide-react";
 import { PointOfInterest } from "@/components/poi/PointOfInterest";
 import { compressVideoUnderLimit, resetFFmpeg } from "@/lib/ffmpegClient";
 import { useAuth } from "@/firebase/AuthContext";
@@ -102,6 +102,7 @@ const Submit = () => {
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
+  const [date, setDate] = useState("");
 
 
 
@@ -273,7 +274,7 @@ const Submit = () => {
 
   const canProceed = () => {
     if (isOptimizing) return false;
-    if (currentStep === 1) return title && location && description;
+    if (currentStep === 1) return title && location && description && date;
     return true;
   };
 
@@ -299,8 +300,17 @@ const Submit = () => {
       return;
     }
 
+    if (!date) {
+      alert("Escolha uma data para a experiência.");
+      return;
+    }
+
     const uploadedVideo = await uploadFile(videoFile);
     const uploadedModel = await uploadFile(glbFile);
+
+    // Timestamp construído a partir da data escolhida pelo utilizador,
+    // em vez do momento real de submissão (serverTimestamp()).
+    const experienceTimestamp = Timestamp.fromDate(new Date(`${date}T00:00:00`));
 
     await addDoc(collection(db, "magnets"), {
       titulo: title,
@@ -313,7 +323,7 @@ const Submit = () => {
       modelURL: uploadedModel.secure_url,
       modelPublicId: uploadedModel.public_id,
       modelResourceType: uploadedModel.resource_type,
-      createdAt: serverTimestamp(),
+      createdAt: experienceTimestamp,
       ownerId: user?.uid,
       ownerEmail: user?.email,
     });
@@ -355,6 +365,11 @@ const Submit = () => {
             </div>
 
             <div className="flex items-center gap-3">
+              <Calendar className="w-4 h-4 text-black shrink-0" />
+              <span>{date || "—"}</span>
+            </div>
+
+            <div className="flex items-center gap-3">
               <Video className="w-4 h-4 text-black shrink-0" />
               <span>{videoFile?.name ?? "Sem vídeo"}</span>
             </div>
@@ -379,6 +394,7 @@ const Submit = () => {
             setTitle("");
             setLocation("");
             setDescription("");
+            setDate("");
             setVideoFile(null);
             setPoints([]);
             setGlbFile(null);
@@ -414,11 +430,10 @@ const Submit = () => {
           md:px-8
           lg:px-10
           pb-4
-          h-[calc(100vh-5rem)]
-          md:h-[calc(100vh-6rem)]
-          lg:h-[calc(100vh-6rem)]
-          xl:h-[calc(100vh-5rem)]
-          2xl:h-[calc(100vh-4rem)]
+          h-[calc(100vh-2rem)]
+          md:h-[calc(100vh-2rem)]
+          lg:h-[calc(100vh-2rem)]
+          xl:h-[calc(100vh)]
         "
       >
         <div className="w-full h-full border border-black overflow-hidden">
@@ -544,6 +559,16 @@ const Submit = () => {
                         className="mt-1"
                       />
 
+                    </div>
+                    <div>
+                      <Label htmlFor="date">Data</Label>
+                      <Input
+                        id="date"
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        className="mt-1"
+                      />
                     </div>
                     <div>
                       <Label htmlFor="description">Descrição</Label>
@@ -968,6 +993,11 @@ const Submit = () => {
                     {location}
                   </span>
                 </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Calendar className="w-4 h-4 text-black shrink-0" />
+                <span>{date || "—"}</span>
               </div>
 
               <div className="flex items-center gap-3">

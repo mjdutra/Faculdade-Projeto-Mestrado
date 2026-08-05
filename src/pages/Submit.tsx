@@ -1,9 +1,10 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/firebase/config";
-import { addDoc, collection, serverTimestamp, Timestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, Timestamp, GeoPoint } from "firebase/firestore";
 import { uploadFile } from "@/services/cloudinary";
 import TopNav from "@/components/TopNav";
+import LocationAutocomplete, { type LocationCoordinates } from "@/components/LocationAutocomplete";
 import VideoControls from "@/components/video/VideoControls";
 import Viewer, { Video360ViewerHandle } from "@/components/video/Video360Viewer";
 import { Button } from "@/components/ui/button";
@@ -101,6 +102,7 @@ const Submit = () => {
   // Step 1 – Info ---------------------------------------------------------------------------------
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
+  const [locationCoords, setLocationCoords] = useState<LocationCoordinates | null>(null);
   const [description, setDescription] = useState("");
   const [date, setDate] = useState("");
 
@@ -315,6 +317,9 @@ const Submit = () => {
     await addDoc(collection(db, "magnets"), {
       titulo: title,
       localização: location,
+      coordenadas: locationCoords
+        ? new GeoPoint(locationCoords.lat, locationCoords.lng)
+        : null,
       descrição: description,
       points,
       videoURL: uploadedVideo.secure_url,
@@ -393,6 +398,7 @@ const Submit = () => {
             setCurrentStep(1);
             setTitle("");
             setLocation("");
+            setLocationCoords(null);
             setDescription("");
             setDate("");
             setVideoFile(null);
@@ -551,14 +557,17 @@ const Submit = () => {
                     </div>
                     <div>
                       <Label htmlFor="location">Localização</Label>
-                      <Input
+                      <LocationAutocomplete
                         id="location"
                         value={location}
-                        onChange={(e) => setLocation(e.target.value)}
+                        coordinates={locationCoords}
+                        onChange={(value, coords) => {
+                          setLocation(value);
+                          setLocationCoords(coords);
+                        }}
                         placeholder="Ex: Guimarães, Portugal"
                         className="mt-1"
                       />
-
                     </div>
                     <div>
                       <Label htmlFor="date">Data</Label>
@@ -689,11 +698,12 @@ const Submit = () => {
                       `}
                     >
                       {isAddingPOI ? "Back" : "+ Add Point of Interest"}
-                    </Button>
+                    </Button
 
 
 
 
+>
                     {isAddingPOI ? (
                       <>
                         {points.map((point, index) => (

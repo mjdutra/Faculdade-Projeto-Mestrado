@@ -21,7 +21,7 @@ export interface Magnet {
   videoResourceType?: string;
   modelPublicId?: string;
   modelResourceType?: string;
-  coordenadas?: GeoPoint;
+  coordenadas?: GeoPoint | null;
   points: PointOfInterest[];
   qrPlacement?: QRPlacement;
   ownerId?: string;

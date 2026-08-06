@@ -5,6 +5,8 @@ import TopNav from "@/components/TopNav";
 import { MagnetViewer } from "@/components/magnet/MagnetViewer";
 import MagnetPage from "@/components/magnet/MagnetPage";
 import type { Magnet } from "@/types/magnet";
+import { Link } from "react-router-dom";
+import { Earth } from "lucide-react";
 
 
 function formatInicio(ts?: Timestamp) {
@@ -244,6 +246,13 @@ const Grid = () => {
   return (
     <div className="min-h-screen w-full bg-white">
       <TopNav />
+
+        <Link
+              to="/mapa"
+              className="fixed bottom-6 right-6 z-50 w-10 h-10 flex items-center justify-center rounded-md text-black hover:bg-black/5 transition-colors"
+            >
+              <Earth className="w-5 h-5" strokeWidth={2} />
+        </Link>
 
       <div className="pt-28 md:pt-36 pb-24 w-full">
         <div className="px-4 md:px-10">

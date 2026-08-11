@@ -472,6 +472,10 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
     });
   }, []);
 
+  const handleSelectChange = useCallback((id: string) => {     
+    setSelectedHotspotId((prev) => (prev === id ? null : id));   
+  }, []);
+
   const cursor = hoveredHotspotId ? "pointer" : isAddingPOI ? "crosshair" : "grab";
 
   return (

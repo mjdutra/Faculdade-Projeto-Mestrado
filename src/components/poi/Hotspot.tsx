@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Html, Billboard, Text } from "@react-three/drei";
+import { Html} from "@react-three/drei";
 import { useXR } from "@react-three/xr";
 import * as THREE from "three";
 import { PointOfInterest } from "./PointOfInterest";
@@ -20,7 +20,7 @@ interface HotspotProps {
 }
 
 const BASE_RADIUS = { desktop: 0.8, vr: 1.5 };
-const HOVER_RADIUS = { desktop: 1, vr: 2 };
+const HOVER_RADIUS = { desktop: 1, vr: 1.5 };
 const PULSE_SPEED = 3;
 const PULSE_AMOUNT = 0.12;
 

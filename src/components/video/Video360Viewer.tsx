@@ -86,7 +86,6 @@ const CameraController = forwardRef<CameraControllerHandle, {}>(
   }
 );
 
-
 function OffscreenIndicators({
   points,
   video,
@@ -154,7 +153,6 @@ function OffscreenIndicators({
 
     return null;
 }
-
 
 function Sphere({
   video,
@@ -231,7 +229,6 @@ function Sphere({
     </>
   );
 }
-
 
 const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(function Video360Viewer(
   { videoUrl, points, isAddingPOI = false, onTimeUpdate, onDurationChange, onPlayingChange, onVolumeChange, onEnded, onPositionClick },
@@ -461,13 +458,18 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
 
   const handleHoverChange = useCallback((id: string, hovering: boolean) => {
     setHoveredHotspotId((prev) => {
-      if (hovering) return id;
-      return prev === id ? null : prev;
-    });
-  }, []);
+      if (hovering) {
+        videoRef.current?.pause();
+        return id;
+      }
 
-  const handleSelectChange = useCallback((id: string) => {
-    setSelectedHotspotId((prev) => (prev === id ? null : id));
+      if (prev === id) {
+        videoRef.current?.play().catch(() => {});
+        return null;
+      }
+
+      return prev;
+    });
   }, []);
 
   const cursor = hoveredHotspotId ? "pointer" : isAddingPOI ? "crosshair" : "grab";

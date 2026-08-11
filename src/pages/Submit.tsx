@@ -334,7 +334,7 @@ const Submit = () => {
             <div className="flex items-center gap-3">
               <Star className="w-4 h-4 text-black shrink-0" />
               <span>
-                {points.filter((p) => p.title).length} ponto(s) de interesse
+                {points.length} ponto(s) de interesse
               </span>
             </div>
 
@@ -985,7 +985,7 @@ const Submit = () => {
               <div className="flex items-center gap-3">
                 <Star className="w-4 h-4 text-black shrink-0" />
                 <span>
-                  {points.filter((p) => p.title).length} ponto(s) de interesse
+                  {points.length} ponto(s) de interesse
                 </span>
               </div>
 

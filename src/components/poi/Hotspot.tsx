@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Html } from "@react-three/drei";
+import { Html, Billboard, Text } from "@react-three/drei";
 import { useXR } from "@react-three/xr";
 import * as THREE from "three";
 import { PointOfInterest } from "./PointOfInterest";
@@ -106,6 +106,7 @@ export function Hotspot({
           e.stopPropagation();
           if (inVR) {
             pointerDownRef.current = true;
+            (e.target as any)?.setPointerCapture?.(e.pointerId);
           }
         }}
 
@@ -113,6 +114,7 @@ export function Hotspot({
           e.stopPropagation();
           if (inVR && pointerDownRef.current) {
             pointerDownRef.current = false;
+            (e.target as any)?.releasePointerCapture?.(e.pointerId);
             onSelectChange?.(point.id);
           }
         }}
@@ -127,10 +129,26 @@ export function Hotspot({
       <sphereGeometry args={[radius, 16, 16]} />
       <meshBasicMaterial color={highlighted ? "#ffffff" : "#ff0000"} />
 
-      {showContent && (
+      {showContent && !inVR && (
         <Html center style={{ pointerEvents: "none", transform: "translateY(-120%)" }}>
           <HotspotTooltip point={point} />
         </Html>
+      )}
+
+      {showContent && inVR && (
+        <Billboard position={[0, radius + 0.6, 0]}>
+          <Text
+            fontSize={0.35}
+            color="#111111"
+            anchorX="center"
+            anchorY="bottom"
+            outlineWidth={0.015}
+            outlineColor="#ffffff"
+            maxWidth={4}
+          >
+            {point.title || "Ponto de Interesse"}
+          </Text>
+        </Billboard>
       )}
     </mesh>
   );

@@ -188,9 +188,6 @@ export function MagnetViewer({
   className?: string;
   preserveDrawingBuffer?: boolean;
   onAspectChange?: (aspect: number) => void;
-  /** Reporta ao componente pai (ex.: Homepage) se o rato está sobre a
-   * geometria visível do GLB — para que o pai possa dar prioridade real
-   * ao modelo em relação ao canvas de outros magnets sobrepostos. */
   onModelHoverChange?: (hovering: boolean) => void;
   infoContent?: React.ReactNode;
 }) {

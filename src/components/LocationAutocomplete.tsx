@@ -170,11 +170,6 @@ export default function LocationAutocomplete({
           ))}
         </ul>
       )}
-
-      <p className="mt-1 text-[10px] text-gray-400">
-        Dados de localização © colaboradores do OpenStreetMap
-        {coordinates && " · localização confirmada"}
-      </p>
     </div>
   );
 }

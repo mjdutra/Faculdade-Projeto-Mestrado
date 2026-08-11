@@ -242,8 +242,116 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
   const [hoveredHotspotId, setHoveredHotspotId] = useState<string | null>(null);
   const [selectedHotspotId, setSelectedHotspotId] = useState<string | null>(null);
   const [offscreenIndicators, setOffscreenIndicators] = useState<IndicatorState[]>([]);
+  const [isVRAvailable, setIsVRAvailable] = useState(false);
+  const UP_AXIS = new THREE.Vector3(0, 0, 1);
 
 
+  function VROffscreenIndicators({
+    points,
+    video,
+  }: {
+    points: PointOfInterest[];
+    video: HTMLVideoElement;
+  }) {
+    const { camera, gl } = useThree();
+    const groupRefs = useRef<Record<string, THREE.Group | null>>({});
+
+    const tmp = useMemo(
+      () => ({
+        camPos: new THREE.Vector3(),
+        camQuat: new THREE.Quaternion(),
+        camQuatInv: new THREE.Quaternion(),
+        localDir: new THREE.Vector3(),
+        targetPos: new THREE.Vector3(),
+        offset: new THREE.Vector3(),
+        bearingQuat: new THREE.Quaternion(),
+      }),
+      []
+    );
+
+    const CENTER_DEG = 35;
+    const RING_DEG = 40;
+    const DISTANCE = 2.2;
+
+    useFrame(() => {
+      if (!gl.xr.isPresenting) return;
+
+      camera.getWorldPosition(tmp.camPos);
+      camera.getWorldQuaternion(tmp.camQuat);
+      tmp.camQuatInv.copy(tmp.camQuat).invert();
+
+      const t = video.currentTime;
+
+      for (const point of points) {
+        const group = groupRefs.current[point.id];
+        if (!group) continue;
+
+        if (!isPointActive(point, t)) {
+          group.visible = false;
+          continue;
+        }
+
+        tmp.targetPos.copy(yawPitchToVector(point.yaw, point.pitch, 49.8));
+        tmp.localDir
+          .copy(tmp.targetPos)
+          .sub(tmp.camPos)
+          .normalize()
+          .applyQuaternion(tmp.camQuatInv);
+
+        const forwardComponent = -tmp.localDir.z;
+        const polarDeg = THREE.MathUtils.radToDeg(
+          Math.acos(THREE.MathUtils.clamp(forwardComponent, -1, 1))
+        );
+
+        if (polarDeg <= CENTER_DEG) {
+          group.visible = false;
+          continue;
+        }
+
+        const bearing = Math.atan2(tmp.localDir.x, tmp.localDir.y);
+        const ringRad = THREE.MathUtils.degToRad(RING_DEG);
+
+        tmp.offset
+          .set(
+            Math.sin(ringRad) * Math.sin(bearing),
+            Math.sin(ringRad) * Math.cos(bearing),
+            -Math.cos(ringRad)
+          )
+          .multiplyScalar(DISTANCE)
+          .applyQuaternion(tmp.camQuat)
+          .add(tmp.camPos);
+
+        tmp.bearingQuat.setFromAxisAngle(UP_AXIS, -bearing);
+
+        group.visible = true;
+        group.position.copy(tmp.offset);
+        group.quaternion.copy(tmp.camQuat).multiply(tmp.bearingQuat);
+      }
+    });
+
+    return (
+      <>
+        {points.map((point) => (
+          <group
+            key={point.id}
+            ref={(el) => {
+              groupRefs.current[point.id] = el;
+            }}
+            visible={false}
+          >
+            <mesh position={[0, 0, -0.002]} scale={1.35}>
+              <coneGeometry args={[0.055, 0.13, 3]} />
+              <meshBasicMaterial color="#000000" />
+            </mesh>
+            <mesh>
+              <coneGeometry args={[0.05, 0.12, 3]} />
+              <meshBasicMaterial color="#ffffff" />
+            </mesh>
+          </group>
+        ))}
+      </>
+    );
+  }
 
   useEffect(() => {
     const v = document.createElement("video");
@@ -270,6 +378,26 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
       setVideoEl(null);
     };
   }, [videoUrl]);
+
+  useEffect(() => {
+    const checkVRSupport = async () => {
+      try {
+        if (!("xr" in navigator) || !navigator.xr) {
+          setIsVRAvailable(false);
+          return;
+        }
+
+        const supported =
+          await navigator.xr.isSessionSupported("immersive-vr");
+
+        setIsVRAvailable(supported);
+      } catch {
+        setIsVRAvailable(false);
+      }
+    };
+
+    checkVRSupport();
+  }, []);
 
   useEffect(() => {
     const v = videoEl;
@@ -366,6 +494,8 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
               onUpdate={setOffscreenIndicators}
             />
 
+            <VROffscreenIndicators points={points} video={videoEl} />
+
             <CameraController ref={cameraControllerRef} />
           </XR>
         </Canvas>
@@ -385,19 +515,21 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
         </div>
       ))}
 
-      <button
-          type="button"
-          onClick={async () => {
-            try {
-              await videoRef.current?.play();
-              await xrStore.enterVR();
-            } catch (error) {
-              console.error("Erro ao iniciar VR:", error);
+      {isVRAvailable && ( 
+        <button 
+          type="button" 
+          onClick={async () => { 
+            try { 
+              await videoRef.current?.play(); 
+              await xrStore.enterVR(); 
+            } catch (error) { 
+              console.error( "Erro ao iniciar VR:", error ); 
             }
-          }}
-          className="absolute bottom-4 right-4 z-50 rounded-lg bg-white px-4 py-2 font-medium text-black shadow-lg"
-        > Ver em VR
-    </button>
+          }} 
+          className="absolute bottom-4 right-4 z-50 rounded-lg bg-white px-4 py-2 font-medium text-black shadow-lg" > 
+          Ver em VR 
+        </button> 
+      )}
     </div>
   );
 });

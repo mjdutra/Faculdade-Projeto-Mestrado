@@ -10,13 +10,12 @@ export default function TopNav() {
   const { user } = useAuth();
 
   const rightItems = user
-  ? [
-      { path: "/submit", label: "Novo" },
-      { path: "/profile", label: "Perfil" },
-    ]
-  : [ { path: "/login", label: "Login" }];
+    ? [
+        { path: "/submit", label: "Novo" },
+        { path: "/profile", label: "Perfil" },
+      ]
+    : [{ path: "/login", label: "Login" }];
 
-  
   const linkClass = (path: string) =>
     cn(
       "text-xs md:text-sm font-bold tracking-widest uppercase transition-opacity"
@@ -24,20 +23,23 @@ export default function TopNav() {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white-10">
-      <div className="grid grid-cols-3 items-center px-6 md:px-10 h-16 mx-auto text-black">
-        <div className="justify-self-start">
+      <div className="flex md:grid md:grid-cols-3 items-center justify-between px-6 md:px-10 h-16 mx-auto text-black">
+        {/* Explorar */}
+        <div className="flex-1 md:flex-none md:justify-self-start">
           <Link to={leftItem.path} className={linkClass(leftItem.path)}>
             {leftItem.label}
           </Link>
         </div>
 
-        <div className="justify-self-center">
+        {/* Scan */}
+        <div className="flex-1 flex justify-center md:justify-self-center">
           <Link to={centerItem.path} className={linkClass(centerItem.path)}>
             {centerItem.label}
           </Link>
         </div>
 
-        <div className="flex gap-6 justify-self-end">
+        {/* Novo + Perfil */}
+        <div className="flex-1 flex justify-end gap-2 md:gap-6 md:justify-self-end">
           {rightItems.map((item) => (
             <Link
               key={item.path}
@@ -52,3 +54,4 @@ export default function TopNav() {
     </nav>
   );
 }
+

@@ -309,9 +309,6 @@ const Submit = () => {
 
     const uploadedVideo = await uploadFile(videoFile);
     const uploadedModel = await uploadFile(glbFile);
-
-    // Timestamp construído a partir da data escolhida pelo utilizador,
-    // em vez do momento real de submissão (serverTimestamp()).
     const experienceTimestamp = Timestamp.fromDate(new Date(`${date}T00:00:00`));
 
     await addDoc(collection(db, "magnets"), {
@@ -424,7 +421,7 @@ const Submit = () => {
 
   return (
     <div className="min-h-screen flex flex-col"> 
-      <TopNav />
+      <TopNav/>
       <div
         className="
           pt-20
@@ -436,18 +433,14 @@ const Submit = () => {
           md:px-8
           lg:px-10
           pb-4
-          h-[calc(100vh-2rem)]
-          md:h-[calc(100vh-2rem)]
-          lg:h-[calc(100vh-2rem)]
-          xl:h-[calc(100vh)]
         "
       >
         <div className="w-full h-full border border-black overflow-hidden">
-          <div className="grid grid-rows-[55vh_1fr] sm:grid-rows-[60vh_1fr] md:grid-rows-none md:grid-cols-2 h-full">
+          <div className="lg:grid grid-rows-[55vh_1fr] sm:grid-rows-[60vh_1fr] md:grid-rows-none md:grid-cols-2 h-full">
 
-            <div className="h-full min-h-0 flex flex-col">
+            <div className="md:h-full min-h-0 flex flex-col">
 
-              <div className="flex-1 min-h-0 relative">
+              <div className="md:flex-1 min-h-0 relative">
                 {currentStep === 3 && videoObjectUrl && (
                   <div className="absolute inset-0 p-2 sm:p-3 md:p-4 lg:p-5">
                     <AspectFitBox ratio={16 / 9}>

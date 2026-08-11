@@ -639,8 +639,8 @@ const Submit = () => {
                       className={`
                         rounded-none
                         uppercase
-                        text-xs
-                        sm:text-[0.5px]
+                        sm:text-[10px]
+                        lg:text-[12px] 
                         font-bold
                         tracking-wide
                         transition-colors

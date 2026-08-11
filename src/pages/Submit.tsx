@@ -53,7 +53,6 @@ function AspectFitBox({
         width = height * ratio;
       }
 
-      // Evita re-renders desnecessários com diferenças mínimas
       setSize((prev) => {
         if (Math.abs(prev.width - width) < 0.5 && Math.abs(prev.height - height) < 0.5) {
           return prev;
@@ -276,7 +275,12 @@ const Submit = () => {
 
   const canProceed = () => {
     if (isOptimizing) return false;
-    if (currentStep === 1) return title && location && description && date;
+    if (currentStep === 1){
+      return Boolean(title && location && description && date);
+    }
+    if (currentStep === 2) { 
+      return Boolean(videoFile); 
+    }
     return true;
   };
 
@@ -292,20 +296,11 @@ const Submit = () => {
   try {
     setIsSubmitting(true);
 
-    if (!videoFile) {
-      alert("Escolha um vídeo.");
-      return;
-    }
-
     if (!glbFile) {
       alert("Escolha um modelo 3D.");
       return;
     }
 
-    if (!date) {
-      alert("Escolha uma data para a experiência.");
-      return;
-    }
 
     const uploadedVideo = await uploadFile(videoFile);
     const uploadedModel = await uploadFile(glbFile);
@@ -690,7 +685,7 @@ const Submit = () => {
                         }
                       `}
                     >
-                      {isAddingPOI ? "Back" : "+ Add Point of Interest"}
+                      {isAddingPOI ? "Back" : "+ Adicionar Ponto de Interesse"}
                     </Button
 
 
@@ -926,7 +921,7 @@ const Submit = () => {
                     className="rounded-none z-30 uppercase text-xs font-bold tracking-widest bg-gray-200 text-gray-500 hover:bg-gray-300 disabled:opacity-50 disabled:hover:bg-gray-200"
                   >
                     <ChevronLeft className="w-4 h-4 mr-1" />
-                    Previous
+                    Anterior
                   </Button>
                 ) : (
                   <div />
@@ -939,7 +934,7 @@ const Submit = () => {
                     disabled={!canProceed()}
                     className="rounded-none uppercase text-xs font-bold tracking-widest bg-neutral-700 text-white hover:bg-neutral-800"
                   >
-                    Next
+                    Próximo
                     <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
                 ) : (
@@ -952,12 +947,12 @@ const Submit = () => {
                     {isSubmitting ? (
                       <>
                         <span className="animate-spin mr-2">⏳</span>
-                        Submiting...
+                        Submeter...
                       </>
                     ) : (
                       <>
                         <Check className="w-4 h-4 mr-1" />
-                        Finish
+                        Concluir
                       </>
                     )}
                   </Button>

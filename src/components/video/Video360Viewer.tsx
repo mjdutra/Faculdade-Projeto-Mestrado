@@ -3,7 +3,7 @@
 import { ThreeEvent } from "@react-three/fiber";
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, useCallback } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
+import { OrbitControls, Text } from "@react-three/drei";
 import * as THREE from "three";
 import { XR, createXRStore, IfInSessionMode } from "@react-three/xr";
 import { ChevronUp } from "lucide-react";
@@ -54,6 +54,8 @@ const xrStore = createXRStore({
     },
   },
 });
+
+const UP_AXIS = new THREE.Vector3(0, 0, 1);
 
 const CameraController = forwardRef<CameraControllerHandle, {}>(
   function CameraController(_, ref) {
@@ -230,6 +232,79 @@ function Sphere({
   );
 }
 
+// Botão "Sair do VR" renderizado dentro da cena, preso à câmara (HUD),
+// porque elementos DOM normais não são compostos para dentro da sessão
+// WebXR imersiva - só o que está dentro do <XR> é visível no headset.
+function VRExitButton({ onExit }: { onExit: () => void }) {
+  const { camera, gl } = useThree();
+  const groupRef = useRef<THREE.Group>(null);
+  const [hovered, setHovered] = useState(false);
+
+  const tmp = useMemo(
+    () => ({
+      camPos: new THREE.Vector3(),
+      camQuat: new THREE.Quaternion(),
+    }),
+    []
+  );
+
+  // Deslocamento em espaço da câmara: direita, baixo, à frente
+  // (canto inferior direito do campo de visão).
+  const OFFSET = useMemo(() => new THREE.Vector3(0.45, -0.32, -1.1), []);
+
+  useFrame(() => {
+    if (!gl.xr.isPresenting || !groupRef.current) return;
+
+    camera.getWorldPosition(tmp.camPos);
+    camera.getWorldQuaternion(tmp.camQuat);
+
+    groupRef.current.position
+      .copy(OFFSET)
+      .applyQuaternion(tmp.camQuat)
+      .add(tmp.camPos);
+    groupRef.current.quaternion.copy(tmp.camQuat);
+  });
+
+  return (
+    <group ref={groupRef} renderOrder={999}>
+      <mesh
+        onClick={(e: ThreeEvent<MouseEvent>) => {
+          e.stopPropagation();
+          onExit();
+        }}
+        onPointerOver={(e: ThreeEvent<PointerEvent>) => {
+          e.stopPropagation();
+          setHovered(true);
+        }}
+        onPointerOut={(e: ThreeEvent<PointerEvent>) => {
+          e.stopPropagation();
+          setHovered(false);
+        }}
+      >
+        <planeGeometry args={[0.32, 0.13]} />
+        <meshBasicMaterial
+          color={hovered ? "#8e0505" : "#ffffff"}
+          side={THREE.DoubleSide}
+          transparent
+          opacity={0.95}
+          depthTest={false}
+          toneMapped={false}
+        />
+      </mesh>
+      <Text
+        position={[0, 0, 0.002]}
+        fontSize={0.028}
+        color={hovered ? "#ffffff" : "#111111"}
+        anchorX="center"
+        anchorY="middle"
+        depthOffset={-1}
+      >
+        Sair do VR
+      </Text>
+    </group>
+  );
+}
+
 const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(function Video360Viewer(
   { videoUrl, points, isAddingPOI = false, onTimeUpdate, onDurationChange, onPlayingChange, onVolumeChange, onEnded, onPositionClick },
   ref
@@ -242,7 +317,6 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
   const [offscreenIndicators, setOffscreenIndicators] = useState<IndicatorState[]>([]);
   const [isVRAvailable, setIsVRAvailable] = useState(false);
   const [isInVR, setIsInVR] = useState(false);
-  const UP_AXIS = new THREE.Vector3(0, 0, 1);
 
 
   function VROffscreenIndicators({
@@ -551,6 +625,10 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
 
             <VROffscreenIndicators points={points} video={videoEl} />
 
+            <IfInSessionMode allow={["immersive-vr", "immersive-ar"]}>
+              <VRExitButton onExit={handleVRButton} />
+            </IfInSessionMode>
+
             <CameraController ref={cameraControllerRef} />
           </XR>
         </Canvas>
@@ -570,13 +648,13 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
         </div>
       ))}
 
-      {isVRAvailable && (
+      {isVRAvailable && !isInVR && (
         <button
           type="button"
           onClick={handleVRButton}
           className="absolute bottom-4 right-4 z-50 rounded-lg bg-white px-4 py-2 font-medium text-black shadow-lg"
         >
-          {isInVR ? "Sair do modo VR" : "Ver em VR"}
+          Ver em VR
         </button>
     )}
     </div>

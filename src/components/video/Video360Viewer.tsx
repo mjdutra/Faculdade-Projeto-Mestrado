@@ -13,6 +13,7 @@ import { yawPitchToVector, vectorToYawPitch } from "@/lib/spherical";
 import { isPointActive } from "@/lib/poi";
 import { getEdgeIndicator, type EdgeIndicator } from "@/lib/screenEdge";
 
+
 export interface Video360ViewerHandle {
   play: () => void;
   pause: () => void;

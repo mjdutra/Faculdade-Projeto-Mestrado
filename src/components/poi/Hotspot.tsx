@@ -6,6 +6,7 @@ import { useXR } from "@react-three/xr";
 import * as THREE from "three";
 import { PointOfInterest } from "./PointOfInterest";
 import { HotspotTooltip } from "./HotspotTooltip";
+import { HotspotVR } from "./HotspotVR";
 import { isPointActive } from "@/lib/poi";
 
 interface HotspotProps {
@@ -95,23 +96,9 @@ export function Hotspot({
       )}
 
       {showContent && inVR && (
-        <Billboard position={[0, radius + 0.6, 0]}>
-          <mesh position={[0, 0, -0.01]}>
-            <planeGeometry args={[2.6, 0.9]} />
-            <meshBasicMaterial color="#ffffff" transparent opacity={0.85} />
-          </mesh>
-          <Text
-            fontSize={0.28}
-            color="#111111"
-            anchorX="center"
-            anchorY="middle"
-            maxWidth={2.3}
-            textAlign="center"
-            position={[0, 0, 0.01]}
-          >
-            {point.title || "Ponto de Interesse"}
-          </Text>
-        </Billboard>
+        <HotspotVR 
+          point={point} 
+          radius={radius} />
       )}
     </mesh>
   );

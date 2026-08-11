@@ -34,57 +34,17 @@ function AspectFitBox({
   className?: string;
   children: React.ReactNode;
 }) {
-  const outerRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ width: 0, height: 0 });
-
-  useEffect(() => {
-    const el = outerRef.current;
-    if (!el) return;
-
-    const compute = () => {
-      const { width: cw, height: ch } = el.getBoundingClientRect();
-      if (cw <= 0 || ch <= 0) return;
-
-      let width = cw;
-      let height = width / ratio;
-
-      if (height > ch) {
-        height = ch;
-        width = height * ratio;
-      }
-
-      setSize((prev) => {
-        if (Math.abs(prev.width - width) < 0.5 && Math.abs(prev.height - height) < 0.5) {
-          return prev;
-        }
-        return { width, height };
-      });
-    };
-
-    compute();
-
-    const ro = new ResizeObserver(compute);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [ratio]);
-
   return (
     <div
-      ref={outerRef}
-      className={`w-full h-full flex items-center justify-center ${className}`}
+      className={`relative w-full max-w-full overflow-hidden ${className}`}
+      style={{ aspectRatio: ratio }}
     >
-      <div
-        style={{
-          width: size.width || "100%",
-          height: size.height || "100%",
-        }}
-      >
+      <div className="absolute inset-0 flex items-center justify-center min-w-0 min-h-0">
         {children}
       </div>
     </div>
   );
 }
-
 
 
 
@@ -276,7 +236,7 @@ const Submit = () => {
   const canProceed = () => {
     if (isOptimizing) return false;
     if (currentStep === 1){
-      return Boolean(title && location && description && date);
+      return Boolean(title && location && date);
     }
     if (currentStep === 2) { 
       return Boolean(videoFile); 
@@ -430,14 +390,19 @@ const Submit = () => {
           pb-4
         "
       >
-        <div className="w-full h-full border border-black overflow-hidden">
-          <div className="lg:grid grid-rows-[55vh_1fr] sm:grid-rows-[60vh_1fr] md:grid-rows-none md:grid-cols-2 h-full">
+        <div className="w-full border border-black overflow-hidden">
+          <div className="
+            flex flex-col
+            lg:grid grid-rows-[55vh_1fr] 
+            sm:grid-rows-[60vh_1fr] 
+            md:grid-rows-none 
+            md:grid-cols-2 h-full">
 
             <div className="md:h-full min-h-0 flex flex-col">
 
               <div className="md:flex-1 min-h-0 relative">
                 {currentStep === 3 && videoObjectUrl && (
-                  <div className="absolute inset-0 p-2 sm:p-3 md:p-4 lg:p-5">
+                  <div className="inset-0 p-2 sm:p-3 md:p-4 lg:p-5">
                     <AspectFitBox ratio={16 / 9}>
                       <div
                         ref={playerContainerRef}
@@ -519,7 +484,7 @@ const Submit = () => {
 
 
 
-            <div className="h-full p-8 md:p-10 flex flex-col overflow-y-auto">
+            <div className="h-full p-4 md:p-10 flex flex-col overflow-y-auto">
               <div className="flex-1">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
                   Passo {currentStep} de {STEPS.length}
@@ -675,8 +640,9 @@ const Submit = () => {
                         rounded-none
                         uppercase
                         text-xs
+                        sm:text-[0.5px]
                         font-bold
-                        tracking-widest
+                        tracking-wide
                         transition-colors
                         ${
                           isAddingPOI
@@ -686,12 +652,12 @@ const Submit = () => {
                       `}
                     >
                       {isAddingPOI ? "Back" : "+ Adicionar Ponto de Interesse"}
-                    </Button
+                    </Button>
 
 
 
 
->
+
                     {isAddingPOI ? (
                       <>
                         {points.map((point, index) => (
@@ -918,7 +884,20 @@ const Submit = () => {
                   <Button
                     type="button"
                     onClick={handlePrev}
-                    className="rounded-none z-30 uppercase text-xs font-bold tracking-widest bg-gray-200 text-gray-500 hover:bg-gray-300 disabled:opacity-50 disabled:hover:bg-gray-200"
+                    className="
+                      gap-0
+                      lg:gap-3
+                      rounded-none 
+                      z-30 
+                      uppercase 
+                      text-xs 
+                      font-bold 
+                      tracking-widest 
+                      bg-gray-200 
+                      text-gray-500 
+                      hover:bg-gray-300 
+                      disabled:opacity-50 
+                      disabled:hover:bg-gray-200"
                   >
                     <ChevronLeft className="w-4 h-4 mr-1" />
                     Anterior

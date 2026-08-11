@@ -24,39 +24,22 @@ const PULSE_SPEED = 3;
 const PULSE_AMOUNT = 0.12;
 
 export function Hotspot({ 
-  point, 
-  position, 
-  video, 
-  onHoverChange, 
-  isSelected = false, 
-  onSelectChange 
+  point, position, video, onHoverChange, isSelected = false, onSelectChange 
 }: HotspotProps) {
   const meshRef = useRef<THREE.Mesh>(null);
-  const pointerDownRef = useRef(false);
   const [hovered, setHovered] = useState(false);
   const inVR = useXR((state) => state.mode === "immersive-vr");
-
-  const handleSelect = (e: any) => {
-    e.stopPropagation();
-    onSelectChange?.(point.id);
-  };
 
   useFrame(({ clock }) => {
     const mesh = meshRef.current;
     if (!mesh) return;
 
     const isVisible = isPointActive(point, video.currentTime);
-
     mesh.visible = isVisible;
 
     if (!isVisible) {
-      if (hovered) {
-        setHovered(false);
-        onHoverChange?.(point.id, false);
-      }
-      if (isSelected) {
-        onSelectChange?.(point.id);
-      }
+      if (hovered) { setHovered(false); onHoverChange?.(point.id, false); }
+      if (isSelected) onSelectChange?.(point.id);
       return;
     }
 
@@ -87,43 +70,19 @@ export function Hotspot({
       ref={meshRef}
       position={position}
       pointerEventsOrder={100}
-
-       onPointerOver={(e) => {
+      pointerEventsType={{ deny: "grab" }}
+      onPointerOver={(e) => {
         e.stopPropagation();
-        if (!hovered) {
-          setHovered(true);
-          onHoverChange?.(point.id, true);
-        }
+        if (!hovered) { setHovered(true); onHoverChange?.(point.id, true); }
       }}
-
       onPointerOut={(e) => {
         e.stopPropagation();
         setHovered(false);
         onHoverChange?.(point.id, false);
       }}
-
-      onPointerDown={(e) => {
-          e.stopPropagation();
-          if (inVR) {
-            pointerDownRef.current = true;
-            (e.target as any)?.setPointerCapture?.(e.pointerId);
-          }
-        }}
-
-        onPointerUp={(e) => {
-          e.stopPropagation();
-          if (inVR && pointerDownRef.current) {
-            pointerDownRef.current = false;
-            (e.target as any)?.releasePointerCapture?.(e.pointerId);
-            onSelectChange?.(point.id);
-          }
-        }}
-
-        onClick={(e) => {
-          e.stopPropagation();
-          if (!inVR) {
-            onSelectChange?.(point.id);
-          }
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelectChange?.(point.id);
       }}
     >
       <sphereGeometry args={[radius, 16, 16]} />
@@ -137,14 +96,18 @@ export function Hotspot({
 
       {showContent && inVR && (
         <Billboard position={[0, radius + 0.6, 0]}>
+          <mesh position={[0, 0, -0.01]}>
+            <planeGeometry args={[2.6, 0.9]} />
+            <meshBasicMaterial color="#ffffff" transparent opacity={0.85} />
+          </mesh>
           <Text
-            fontSize={0.35}
+            fontSize={0.28}
             color="#111111"
             anchorX="center"
-            anchorY="bottom"
-            outlineWidth={0.015}
-            outlineColor="#ffffff"
-            maxWidth={4}
+            anchorY="middle"
+            maxWidth={2.3}
+            textAlign="center"
+            position={[0, 0, 0.01]}
           >
             {point.title || "Ponto de Interesse"}
           </Text>

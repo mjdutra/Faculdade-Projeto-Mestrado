@@ -5,7 +5,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
-import { XR, createXRStore } from "@react-three/xr";
+import { XR, createXRStore, IfInSessionMode } from "@react-three/xr";
 import { ChevronUp } from "lucide-react";
 import { PointOfInterest } from "@/components/poi/PointOfInterest";
 import { Hotspot } from "@/components/poi/Hotspot";
@@ -56,33 +56,31 @@ const xrStore = createXRStore({
 
 const CameraController = forwardRef<CameraControllerHandle, {}>(
   function CameraController(_, ref) {
-    const { camera, gl } = useThree();
+    const { camera } = useThree();
     const orbitRef = useRef<any>(null);
 
     useImperativeHandle(ref, () => ({
       lookAt: (yaw: number, pitch: number) => {
-        if (gl.xr.isPresenting) return;
+        if (!orbitRef.current) return;
 
         const dir = yawPitchToVector(yaw, pitch, 1);
         const distance = camera.position.length() || 0.1;
 
-        camera.position.copy(
-          dir.clone().multiplyScalar(-distance)
-        );
-
+        camera.position.copy(dir.clone().multiplyScalar(-distance));
         camera.lookAt(0, 0, 0);
-        orbitRef.current?.update();
+        orbitRef.current.update();
       },
     }));
 
     return (
-      <OrbitControls
-        ref={orbitRef}
-        enableZoom={false}
-        enablePan={false}
-        rotateSpeed={-0.4}
-        enabled={!gl.xr.isPresenting}
-      />
+      <IfInSessionMode deny={["immersive-vr", "immersive-ar"]}>
+        <OrbitControls
+          ref={orbitRef}
+          enableZoom={false}
+          enablePan={false}
+          rotateSpeed={-0.4}
+        />
+      </IfInSessionMode>
     );
   }
 );
@@ -209,7 +207,10 @@ function Sphere({
 
   return (
     <>
-      <mesh onPointerDown={handlePointerDown} onPointerUp={handlePointerUp}>
+      <mesh 
+        onPointerDown={handlePointerDown} 
+        onPointerUp={handlePointerUp}
+        pointerEventsType={{ deny: "grab" }}>
         <sphereGeometry args={[50, 64, 64]} />
         <meshBasicMaterial map={texture} side={THREE.BackSide} toneMapped={false} />
       </mesh>

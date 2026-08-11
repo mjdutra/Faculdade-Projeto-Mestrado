@@ -270,7 +270,7 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
     );
 
     const CENTER_DEG = 35;
-    const RING_DEG = 60;
+    const RING_DEG = 40;
     const DISTANCE = 2.2;
 
     useFrame(() => {
@@ -338,7 +338,7 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
               groupRefs.current[point.id] = el;
             }}
             visible={false}
-            scale={3}
+            scale={2.2}
           >
             <mesh position={[0, 0, -0.002]} scale={1.35}>
               <coneGeometry args={[0.055, 0.13, 3]} />

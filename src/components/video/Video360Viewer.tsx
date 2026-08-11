@@ -241,6 +241,7 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
   const [selectedHotspotId, setSelectedHotspotId] = useState<string | null>(null);
   const [offscreenIndicators, setOffscreenIndicators] = useState<IndicatorState[]>([]);
   const [isVRAvailable, setIsVRAvailable] = useState(false);
+  const [isInVR, setIsInVR] = useState(false);
   const UP_AXIS = new THREE.Vector3(0, 0, 1);
 
 
@@ -394,9 +395,38 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
         setIsVRAvailable(false);
       }
     };
-
     checkVRSupport();
+    }, []);
+
+    useEffect(() => {
+      let session: XRSession | null = null;
+      const handleSessionEnd = () => {
+        setIsInVR(false);
+        session = null;
+      };
+      const updateSession = () => {
+        const currentSession = xrStore.getState().session;
+          if (session !== currentSession) {
+            if (session) {
+              session.removeEventListener("end", handleSessionEnd);
+            }
+            session = currentSession;
+            if (session) {
+              session.addEventListener("end", handleSessionEnd);
+          }
+        }
+        setIsInVR(!!session);
+      };
+      updateSession();
+      const interval = window.setInterval(updateSession, 250);
+      return () => {
+        window.clearInterval(interval);
+        if (session) {
+          session.removeEventListener("end", handleSessionEnd);
+        }
+      };
   }, []);
+
 
   useEffect(() => {
     const v = videoEl;
@@ -476,6 +506,23 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
     setSelectedHotspotId((prev) => (prev === id ? null : id));   
   }, []);
 
+  const handleVRButton = async () => {
+    try {
+      //Sair de VR
+      const session = xrStore.getState().session;
+      if (session) {
+        await session.end();
+        return;
+      }
+      // Entrar em VR
+      await videoRef.current?.play();
+      await xrStore.enterVR();
+    } catch (error) {
+      console.error("Erro ao alterar modo VR:", error);
+      setIsInVR(false);
+    }
+  };
+
   const cursor = hoveredHotspotId ? "pointer" : isAddingPOI ? "crosshair" : "grab";
 
   return (
@@ -523,21 +570,15 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
         </div>
       ))}
 
-      {isVRAvailable && ( 
-        <button 
-          type="button" 
-          onClick={async () => { 
-            try { 
-              await videoRef.current?.play(); 
-              await xrStore.enterVR(); 
-            } catch (error) { 
-              console.error( "Erro ao iniciar VR:", error ); 
-            }
-          }} 
-          className="absolute bottom-4 right-4 z-50 rounded-lg bg-white px-4 py-2 font-medium text-black shadow-lg" > 
-          Ver em VR 
-        </button> 
-      )}
+      {isVRAvailable && (
+        <button
+          type="button"
+          onClick={handleVRButton}
+          className="absolute bottom-4 right-4 z-50 rounded-lg bg-white px-4 py-2 font-medium text-black shadow-lg"
+        >
+          {isInVR ? "Sair do modo VR" : "Ver em VR"}
+        </button>
+    )}
     </div>
   );
 });

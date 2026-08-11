@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/firebase/AuthContext";
 
-const leftItem = { path: "/", label: "Explore" };
+const leftItem = { path: "/", label: "Explorar" };
 const centerItem = { path: "/scan", label: "Scan" };
 
 export default function TopNav() {
@@ -11,7 +11,7 @@ export default function TopNav() {
 
   const rightItems = user
   ? [
-      { path: "/submit", label: "New" },
+      { path: "/submit", label: "Novo" },
       { path: "/profile", label: "Perfil" },
     ]
   : [ { path: "/login", label: "Login" }];

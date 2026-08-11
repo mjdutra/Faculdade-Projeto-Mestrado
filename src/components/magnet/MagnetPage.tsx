@@ -50,7 +50,7 @@ export default function MagnetPage({ magnet, onClose, onDeleted }: Props) {
 
   return (
     <>
-      <SidePanel open={!!magnet} onClose={onClose} title="about" closeDisabled={deleting}>
+      <SidePanel open={!!magnet} onClose={onClose} title="sobre" closeDisabled={deleting}>
         {magnet && (
           <>
             <div className="flex-1 overflow-y-auto p-8 py-10" key={magnet.id}>
@@ -69,7 +69,7 @@ export default function MagnetPage({ magnet, onClose, onDeleted }: Props) {
                   onClick={() => setVrOpen(true)}
                   className="w-full lg:flex-1 rounded-none uppercase text-xs font-bold tracking-widest bg-neutral-700 text-white hover:bg-neutral-800 disabled:opacity-50"
                 >
-                  Enter in VR Experience
+                  Entrar na Experiência VR
                 </Button>
 
                 <Button
@@ -79,7 +79,7 @@ export default function MagnetPage({ magnet, onClose, onDeleted }: Props) {
                   onClick={() => setPrintOpen(true)}
                   className="w-full lg:flex-1 rounded-none border-black uppercase text-xs font-bold tracking-widest text-black hover:text-white hover:bg-neutral-800 disabled:opacity-50"
                 >
-                  Print Magnet
+                  Imprimir Magnet
                 </Button>
               </div>
 
@@ -94,7 +94,7 @@ export default function MagnetPage({ magnet, onClose, onDeleted }: Props) {
                   className="flex items-center gap-2 text-red-600 hover:text-red-800 disabled:opacity-50"
                 >
                   <Trash2 size={20} />
-                  Delete
+                  Eliminar
                 </button>
               </div>
             )}

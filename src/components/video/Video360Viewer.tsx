@@ -232,9 +232,7 @@ function Sphere({
   );
 }
 
-// Botão "Sair do VR" renderizado dentro da cena, preso à câmara (HUD),
-// porque elementos DOM normais não são compostos para dentro da sessão
-// WebXR imersiva - só o que está dentro do <XR> é visível no headset.
+
 function VRExitButton({ onExit }: { onExit: () => void }) {
   const { camera, gl } = useThree();
   const groupRef = useRef<THREE.Group>(null);
@@ -248,8 +246,7 @@ function VRExitButton({ onExit }: { onExit: () => void }) {
     []
   );
 
-  // Deslocamento em espaço da câmara: direita, baixo, à frente
-  // (canto inferior direito do campo de visão).
+
   const OFFSET = useMemo(() => new THREE.Vector3(0.45, -0.32, -1.1), []);
 
   useFrame(() => {
@@ -283,7 +280,7 @@ function VRExitButton({ onExit }: { onExit: () => void }) {
       >
         <planeGeometry args={[0.32, 0.13]} />
         <meshBasicMaterial
-          color={hovered ? "#8e0505" : "#ffffff"}
+          color={hovered ? "#c40505" : "#ffffff"}
           side={THREE.DoubleSide}
           transparent
           opacity={0.95}

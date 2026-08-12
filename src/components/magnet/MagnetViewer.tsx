@@ -183,6 +183,7 @@ export function MagnetViewer({
   onAspectChange,
   onModelHoverChange,
   infoContent,
+  showRotateButton = true,
 }: {
   modelUrl: string;
   className?: string;
@@ -190,6 +191,7 @@ export function MagnetViewer({
   onAspectChange?: (aspect: number) => void;
   onModelHoverChange?: (hovering: boolean) => void;
   infoContent?: React.ReactNode;
+  showRotateButton?: boolean;
 }) {
   const [radius, setRadius] = useState(1.5);
   const [modelMinY, setModelMinY] = useState(-1.5);
@@ -311,36 +313,37 @@ export function MagnetViewer({
           />
         </Canvas>
       </div>
-
-      <button
-        type="button"
-        aria-label="Rodar modelo"
-        onPointerDown={handleRotateButtonPointerDown}
-        onMouseEnter={() => setIsButtonHovered(true)}
-        onMouseLeave={() => setIsButtonHovered(false)}
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: `calc(${bottomPercent}% + ${BUTTON_GAP_PX}px)`,
-          transform: "translateX(-50%)",
-          width: 28,
-          height: 28,
-          borderRadius: "9999px",
-          border: "none",
-          backdropFilter: "blur(2px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: isRotating ? "grabbing" : "grab",
-          opacity: showChrome ? 1 : 0,
-          pointerEvents: "auto",
-          transition: "opacity 200ms ease",
-          touchAction: "none",
-          zIndex: 10,
-        }}
-      >
-        <Rotate3d size={16} strokeWidth={2} color="#404040" />
-      </button>
+      {showRotateButton && (
+        <button
+          type="button"
+          aria-label="Rodar modelo"
+          onPointerDown={handleRotateButtonPointerDown}
+          onMouseEnter={() => setIsButtonHovered(true)}
+          onMouseLeave={() => setIsButtonHovered(false)}
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: `calc(${bottomPercent}% + ${BUTTON_GAP_PX}px)`,
+            transform: "translateX(-50%)",
+            width: 28,
+            height: 28,
+            borderRadius: "9999px",
+            border: "none",
+            backdropFilter: "blur(2px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: isRotating ? "grabbing" : "grab",
+            opacity: showChrome ? 1 : 0,
+            pointerEvents: "auto",
+            transition: "opacity 200ms ease",
+            touchAction: "none",
+            zIndex: 10,
+          }}
+        >
+          <Rotate3d size={16} strokeWidth={2} color="#404040" />
+        </button>
+      )}
 
       {infoContent && showChrome && (
         <div

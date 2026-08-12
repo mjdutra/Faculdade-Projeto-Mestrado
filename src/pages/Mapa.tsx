@@ -1,18 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import MapView from "@/components/MapView";
 import maplibregl from "maplibre-gl";
-import { Layers, Loader2 } from "lucide-react";
+import { Loader2, LayoutGrid } from "lucide-react";
 import { collection, getDocs, type GeoPoint } from "firebase/firestore";
 import { db } from "@/firebase/config";
 import MagnetPage from "@/components/magnet/MagnetPage";
+import { MagnetViewer } from "@/components/magnet/MagnetViewer";
 import type { Magnet } from "@/types/magnet";
-import { LayoutGrid } from "lucide-react";
 
 type MagnetWithCoords = Magnet & { coordenadas: GeoPoint };
+
+const MARKER_SIZE = 100;
 
 const Mapa = () => {
   const [magnets, setMagnets] = useState<Magnet[]>([]);
@@ -21,6 +24,8 @@ const Mapa = () => {
 
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
+  const markerRootsRef = useRef<Root[]>([]);
+  const magnetsRef = useRef<Magnet[]>([]);
 
   useEffect(() => {
     const fetchMagnets = async () => {
@@ -30,6 +35,7 @@ const Mapa = () => {
           id: doc.id,
           ...(doc.data() as Omit<Magnet, "id">),
         }));
+        magnetsRef.current = data;
         setMagnets(data);
       } catch (error) {
         console.error("Erro ao carregar magnets:", error);
@@ -40,54 +46,85 @@ const Mapa = () => {
     fetchMagnets();
   }, []);
 
-  
   const magnetsWithCoords = magnets.filter(
     (magnet): magnet is MagnetWithCoords => !!magnet.coordenadas
   );
+
+  const clearMarkers = () => {
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = [];
+
+    markerRootsRef.current.forEach((root) => root.unmount());
+    markerRootsRef.current = [];
+  };
+
+
+  const focusOnMagnets = () => {
+    const map = mapRef.current;
+    if (!map || magnetsWithCoords.length === 0) return;
+
+    if (magnetsWithCoords.length === 1) {
+      const [only] = magnetsWithCoords;
+      map.flyTo({
+        center: [only.coordenadas.longitude, only.coordenadas.latitude],
+        zoom: 15,
+        essential: true,
+      });
+      return;
+    }
+
+    const bounds = new maplibregl.LngLatBounds();
+    magnetsWithCoords.forEach((magnet) => {
+      bounds.extend([magnet.coordenadas.longitude, magnet.coordenadas.latitude]);
+    });
+
+    map.fitBounds(bounds, { padding: 100, maxZoom: 16, duration: 800 });
+  };
+
+  const updateMarkers = () => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    clearMarkers();
+
+    magnetsWithCoords.forEach((magnet) => {
+      const markerElement = document.createElement("div");
+      markerElement.style.width = `${MARKER_SIZE}px`;
+      markerElement.style.height = `${MARKER_SIZE}px`;
+      markerElement.style.cursor = "pointer";
+
+      const marker = new maplibregl.Marker({ element: markerElement, anchor: "center" })
+        .setLngLat([magnet.coordenadas.longitude, magnet.coordenadas.latitude])
+        .addTo(map);
+      markersRef.current.push(marker);
+
+      const root = createRoot(markerElement);
+      root.render(<MagnetViewer modelUrl={magnet.modelURL} showRotateButton={false} />);
+      markerRootsRef.current.push(root);
+
+      markerElement.addEventListener("click", () => {
+        setSelectedMagnet(magnet);
+      });
+    });
+
+    focusOnMagnets();
+  };
 
   const handleMapLoad = (map: maplibregl.Map) => {
     mapRef.current = map;
     updateMarkers();
   };
 
-  const updateMarkers = () => {
-    if (!mapRef.current) return;
-
-    markersRef.current.forEach((marker) => marker.remove());
-    markersRef.current = [];
-
-    magnetsWithCoords.forEach((magnet) => {
-      const markerElement = document.createElement("div");
-      markerElement.className =
-        "w-10 h-10 bg-black rounded-full flex items-center justify-center text-white cursor-pointer hover:bg-neutral-800 transition-transform hover:scale-110 shadow-lg";
-      markerElement.innerHTML = "🧲";
-
-      markerElement.addEventListener("click", () => {
-        setSelectedMagnet(magnet);
-      });
-
-      const marker = new maplibregl.Marker(markerElement)
-        .setLngLat([magnet.coordenadas.longitude, magnet.coordenadas.latitude])
-        .setPopup(
-          new maplibregl.Popup({ offset: 25 }).setHTML(
-            `<h3 class="font-bold text-gray-900">${magnet.titulo}</h3><p class="text-gray-600">${magnet.localização}</p>`
-          )
-        )
-        .addTo(mapRef.current!);
-
-      markersRef.current.push(marker);
-    });
-  };
-
   useEffect(() => {
     updateMarkers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [magnets.length]);
+    return () => {
+      clearMarkers();
+    };
+  }, [magnets]);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-background">
       <MapView onMapLoad={handleMapLoad} className="absolute inset-0 w-full h-full" />
-
 
       <div className="absolute top-0 left-0 right-0 z-10">
         <div className="container mx-auto px-4 py-3">
@@ -101,7 +138,7 @@ const Mapa = () => {
       <Link
         to="/grid"
         className="fixed bottom-6 right-6 z-50 w-10 h-10 flex items-center justify-center rounded-md text-black hover:bg-black/5 transition-colors"
-        >
+      >
         <LayoutGrid className="w-5 h-5" strokeWidth={2} />
       </Link>
 

@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Video, Star, Box, Calendar, ChevronRight, ChevronLeft, Check, Plus, Trash2, Crosshair } from "lucide-react";
+import { MapPin, Video, Star, Box, Calendar, ChevronRight, ChevronLeft, Trash2, Crosshair } from "lucide-react";
 import { PointOfInterest } from "@/components/poi/PointOfInterest";
 import { compressVideoUnderLimit, resetFFmpeg } from "@/lib/ffmpegClient";
 import { useAuth } from "@/firebase/AuthContext";
@@ -298,16 +298,9 @@ const Submit = () => {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center px-4">
         <div className="text-center space-y-5 max-w-sm">
-          <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto">
-            <Check className="w-10 h-10 text-black" />
-          </div>
           <h2 className="text-2xl font-black uppercase tracking-tight text-black">
-            Experiência Submetida!
+            Experiência Submetida
           </h2>
-          <p className="text-gray-500">
-            A sua experiência foi criada com sucesso.
-          </p>
-
           <div className="border border-gray-200 p-6 text-left space-y-4">
             <div className="flex items-center gap-3">
               <MapPin className="w-4 h-4 text-black shrink-0" />
@@ -930,7 +923,6 @@ const Submit = () => {
                       </>
                     ) : (
                       <>
-                        <Check className="w-4 h-4 mr-1" />
                         Concluir
                       </>
                     )}

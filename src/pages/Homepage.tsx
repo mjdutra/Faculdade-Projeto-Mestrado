@@ -13,20 +13,95 @@ import MagnetPage from "@/components/magnet/MagnetPage";
 import type { Magnet } from "@/types/magnet";
 
 const PROJECT_TITLE = "MAGNET";
-const MAGNET_SIZE = 400;
+
+// ── Tamanho dos magnets ─────────────────────────────────────────────────
+const MAGNET_SIZE = 400; // desktop
+const MOBILE_MAGNET_SIZE = 260; // mobile — ajusta para mudar o tamanho no telemóvel
 
 const CLICK_DRAG_THRESHOLD = 6;
 const MAX_TILT_DEG = 10;
 const TILT_FACTOR = 0.6;
 
-const COLLISION_DISTANCE = MAGNET_SIZE * 0.55;
+const COLLISION_RATIO = 0.55;
 const COLLISION_STRENGTH = 0.12;
 const MAX_PUSH_PER_FRAME = 4;
 
-const MIN_DISTANCE = 28;
+const MIN_DISTANCE = 28; // desktop — distância mínima entre magnets ao nascerem
+const MOBILE_MIN_DISTANCE = 16; // mobile
+
 const MAGNETS_PER_ROW = 4;
 const ROW_HEIGHT = 500;
 
+// ── Responsividade ──────────────────────────────────────────────────────
+const MOBILE_BREAKPOINT = 768;
+
+// Margem extra (px) para além de metade da largura do magnet, para nunca
+// tocar exatamente no limite do ecrã.
+const EDGE_BUFFER_PX = 8;
+// Limite de segurança para a margem horizontal (%) — evita inverter os
+// limites em ecrãs extremamente estreitos.
+const MAX_HORIZONTAL_MARGIN_PERCENT = 45;
+
+// Limites verticais — controlam apenas a "zona" onde os magnets podem
+// nascer/mover-se dentro do contentor. O contentor em si cresce para
+// baixo conforme o número de magnets, o que já garante que só se
+// expande verticalmente (nunca lateralmente).
+const DESKTOP_SPAWN_Y = { yMin: 8, yMax: 92 };
+const MOBILE_SPAWN_Y = { yMin: 62, yMax: 90 };
+const DESKTOP_CLAMP_Y = { yMin: 4, yMax: 96 };
+const MOBILE_CLAMP_Y = { yMin: 55, yMax: 93 };
+
+const getVerticalBounds = (isMobile: boolean, mode: "spawn" | "clamp") => {
+  if (mode === "spawn") return isMobile ? MOBILE_SPAWN_Y : DESKTOP_SPAWN_Y;
+  return isMobile ? MOBILE_CLAMP_Y : DESKTOP_CLAMP_Y;
+};
+
+// Margem horizontal (%), calculada a partir da largura REAL do contentor
+// e do tamanho do magnet — garante que o magnet nunca ultrapassa a
+// margem esquerda/direita do ecrã, seja qual for a largura da janela.
+const getHorizontalMargin = (containerWidth: number, magnetSize: number) => {
+  if (!containerWidth) return 0;
+  const marginPx = magnetSize / 2 + EDGE_BUFFER_PX;
+  const marginPercent = (marginPx / containerWidth) * 100;
+  return Math.min(marginPercent, MAX_HORIZONTAL_MARGIN_PERCENT);
+};
+
+const getBounds = (
+  containerWidth: number,
+  magnetSize: number,
+  isMobile: boolean,
+  mode: "spawn" | "clamp"
+) => {
+  const margin = getHorizontalMargin(containerWidth, magnetSize);
+  const { yMin, yMax } = getVerticalBounds(isMobile, mode);
+  return { xMin: margin, xMax: 100 - margin, yMin, yMax };
+};
+
+const getMagnetSize = (isMobile: boolean) =>
+  isMobile ? MOBILE_MAGNET_SIZE : MAGNET_SIZE;
+
+const getMinDistance = (isMobile: boolean) =>
+  isMobile ? MOBILE_MIN_DISTANCE : MIN_DISTANCE;
+
+const getCollisionDistance = (isMobile: boolean) =>
+  getMagnetSize(isMobile) * COLLISION_RATIO;
+
+function useIsMobile(breakpoint = MOBILE_BREAKPOINT) {
+  const [isMobile, setIsMobile] = useState(
+    () => window.innerWidth < breakpoint
+  );
+
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const handleChange = () => setIsMobile(mql.matches);
+    handleChange();
+    mql.addEventListener("change", handleChange);
+    return () => mql.removeEventListener("change", handleChange);
+  }, [breakpoint]);
+
+  return isMobile;
+}
+// ─────────────────────────────────────────────────────────────────────────
 
 interface Position {
   xPercent: number;
@@ -44,34 +119,42 @@ interface DragStart {
 const centerBiasedRandom = () => (Math.random() + Math.random() + Math.random()) / 3;
 
 const getRandomPosition = (
-      existing: Position[],
-      total: number
-    ): Position => {
-      const maxAttempts = 100;
+  existing: Position[],
+  isMobile: boolean,
+  containerWidth: number,
+  magnetSize: number
+): Position => {
+  const maxAttempts = 100;
+  const { xMin, xMax, yMin, yMax } = getBounds(
+    containerWidth,
+    magnetSize,
+    isMobile,
+    "spawn"
+  );
+  const minDistance = getMinDistance(isMobile);
 
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const position = {
-          xPercent: 6 + Math.random() * 88,
-          yPercent: 8 + Math.random() * 84,
-        };
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const position = {
+      xPercent: xMin + Math.random() * (xMax - xMin),
+      yPercent: yMin + Math.random() * (yMax - yMin),
+    };
 
-        const isFarEnough = existing.every((other) => {
-          const dx = position.xPercent - other.xPercent;
-          const dy = position.yPercent - other.yPercent;
+    const isFarEnough = existing.every((other) => {
+      const dx = position.xPercent - other.xPercent;
+      const dy = position.yPercent - other.yPercent;
+      return Math.hypot(dx, dy) > minDistance;
+    });
 
-          return Math.hypot(dx, dy) > MIN_DISTANCE;
-        });
+    if (isFarEnough) {
+      return position;
+    }
+  }
 
-        if (isFarEnough) {
-          return position;
-        }
-      }
-
-      return {
-        xPercent: 6 + Math.random() * 88,
-        yPercent: 8 + Math.random() * 84,
-      };
+  return {
+    xPercent: xMin + Math.random() * (xMax - xMin),
+    yPercent: yMin + Math.random() * (yMax - yMin),
   };
+};
 
 const Homepage = () => {
   const [magnets, setMagnets] = useState<Magnet[]>([]);
@@ -87,6 +170,7 @@ const Homepage = () => {
   const [tilts, setTilts] = useState<Record<string, number>>({});
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   const positionsRef = useRef<Record<string, Position>>({});
   const magnetsRef = useRef<Magnet[]>([]);
@@ -95,20 +179,56 @@ const Homepage = () => {
   const dragStartRef = useRef<DragStart | null>(null);
   const lastPointerRef = useRef({ x: 0, y: 0 });
 
+  const isMobile = useIsMobile();
+  const isMobileRef = useRef(isMobile);
+  useEffect(() => { isMobileRef.current = isMobile; }, [isMobile]);
+
+  const magnetSize = useMemo(() => getMagnetSize(isMobile), [isMobile]);
+  const magnetSizeRef = useRef(magnetSize);
+  useEffect(() => { magnetSizeRef.current = magnetSize; }, [magnetSize]);
+
   useEffect(() => { positionsRef.current = positions; }, [positions]);
   useEffect(() => { magnetsRef.current = magnets; }, [magnets]);
   useEffect(() => { draggingIdRef.current = draggingId; }, [draggingId]);
 
-  useEffect(() => { setPositions((prev) => {
+  // Acompanha a largura real do contentor (redimensionar janela, rodar
+  // telemóvel, etc.) — é a partir dela que calculamos a margem horizontal.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const updateWidth = () => setContainerWidth(el.getBoundingClientRect().width);
+    updateWidth();
+
+    const ro = new ResizeObserver(updateWidth);
+    ro.observe(el);
+    window.addEventListener("orientationchange", updateWidth);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("orientationchange", updateWidth);
+    };
+  }, []);
+
+  // Atribui posição inicial aos magnets ainda sem posição.
+  useEffect(() => {
+    setPositions((prev) => {
       const next = { ...prev };
       const existingPositions = magnets
         .map((magnet) => next[magnet.id])
         .filter(Boolean);
+
+      const width =
+        containerRef.current?.getBoundingClientRect().width ||
+        containerWidth ||
+        window.innerWidth;
+
       magnets.forEach((magnet) => {
         if (!next[magnet.id]) {
           const position = getRandomPosition(
             existingPositions,
-            magnets.length
+            isMobile,
+            width,
+            magnetSize
           );
           next[magnet.id] = position;
           existingPositions.push(position);
@@ -116,7 +236,29 @@ const Homepage = () => {
       });
       return next;
     });
-  }, [magnets]);
+  }, [magnets, isMobile, magnetSize, containerWidth]);
+
+  // Sempre que a largura do contentor ou o tamanho do magnet mudam
+  // (redimensionar janela, rodar o telemóvel, mudar de mobile↔desktop),
+  // reajusta as posições já existentes para dentro dos novos limites.
+  useEffect(() => {
+    if (!containerWidth) return;
+
+    setPositions((prev) => {
+      const bounds = getBounds(containerWidth, magnetSize, isMobile, "clamp");
+      let changed = false;
+      const next: Record<string, Position> = {};
+
+      for (const [id, pos] of Object.entries(prev)) {
+        const xPercent = Math.min(bounds.xMax, Math.max(bounds.xMin, pos.xPercent));
+        const yPercent = Math.min(bounds.yMax, Math.max(bounds.yMin, pos.yPercent));
+        if (xPercent !== pos.xPercent || yPercent !== pos.yPercent) changed = true;
+        next[id] = { xPercent, yPercent };
+      }
+
+      return changed ? next : prev;
+    });
+  }, [containerWidth, magnetSize, isMobile]);
 
   const contentHeight = Math.max(
     window.innerHeight,
@@ -142,6 +284,9 @@ const Homepage = () => {
     fetchMagnets();
   }, []);
 
+  // NOTA: este efeito é código morto — quando corre, o efeito de spawn
+  // acima já atribuiu posição a todos os magnets, pelo que a condição
+  // `!next[magnet.id]` nunca é verdadeira. Mantido tal como estava.
   useEffect(() => {
     setPositions((prev) => {
       const next = { ...prev };
@@ -204,11 +349,13 @@ const Homepage = () => {
       const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
       const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
 
+      const bounds = getBounds(rect.width, magnetSize, isMobileRef.current, "clamp");
+
       setPositions((prev) => ({
         ...prev,
         [draggingId]: {
-          xPercent: Math.min(98, Math.max(2, xPercent)),
-          yPercent: Math.min(96, Math.max(4, yPercent)),
+          xPercent: Math.min(bounds.xMax, Math.max(bounds.xMin, xPercent)),
+          yPercent: Math.min(bounds.yMax, Math.max(bounds.yMin, yPercent)),
         },
       }));
 
@@ -248,7 +395,7 @@ const Homepage = () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [draggingId, openMagnet]);
+  }, [draggingId, openMagnet, magnetSize]);
 
   useEffect(() => {
     let frameId: number;
@@ -278,6 +425,8 @@ const Homepage = () => {
           displacement[id] = { x: 0, y: 0 };
         });
 
+        const collisionDistance = getCollisionDistance(isMobileRef.current);
+
         for (let i = 0; i < ids.length; i++) {
           for (let j = i + 1; j < ids.length; j++) {
             const idA = ids[i];
@@ -289,14 +438,14 @@ const Homepage = () => {
             let dy = b.y - a.y;
             let dist = Math.hypot(dx, dy);
 
-            if (dist < COLLISION_DISTANCE) {
+            if (dist < collisionDistance) {
               if (dist < 0.01) {
                 dx = (Math.random() - 0.5) * 0.01;
                 dy = (Math.random() - 0.5) * 0.01;
                 dist = 0.01;
               }
 
-              const overlap = COLLISION_DISTANCE - dist;
+              const overlap = collisionDistance - dist;
               const nx = dx / dist;
               const ny = dy / dist;
               const push = Math.min(overlap * COLLISION_STRENGTH, MAX_PUSH_PER_FRAME);
@@ -320,6 +469,7 @@ const Homepage = () => {
 
         let changed = false;
         const next = { ...current };
+        const bounds = getBounds(width, magnetSizeRef.current, isMobileRef.current, "clamp");
 
         ids.forEach((id) => {
           const d = displacement[id];
@@ -328,8 +478,8 @@ const Homepage = () => {
             const newXPercent = ((px[id].x + d.x) / width) * 100;
             const newYPercent = ((px[id].y + d.y) / height) * 100;
             next[id] = {
-              xPercent: Math.min(98, Math.max(2, newXPercent)),
-              yPercent: Math.min(96, Math.max(4, newYPercent)),
+              xPercent: Math.min(bounds.xMax, Math.max(bounds.xMin, newXPercent)),
+              yPercent: Math.min(bounds.yMax, Math.max(bounds.yMin, newYPercent)),
             };
           }
         });
@@ -388,18 +538,19 @@ const Homepage = () => {
   );
 
   return (
-    <div className="min-h-screen w-full bg-white">
+    <div className="min-h-screen w-full bg-white overflow-x-hidden">
       <TopNav />
 
       <div
         ref={containerRef}
-        className="relative w-full"
+        className="relative w-full overflow-x-hidden"
         style={{
           minHeight: contentHeight,
         }}
       >
-        <h1  
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[14vw] leading-none font-black tracking-tight text-black select-none whitespace-nowrap pointer-events-none">
+        <h1
+          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[14vw] leading-none font-black tracking-tight text-black select-none whitespace-nowrap pointer-events-none z-0"
+        >
           {PROJECT_TITLE}
         </h1>
 
@@ -421,8 +572,8 @@ const Homepage = () => {
                 style={{
                   left: `${pos.xPercent}%`,
                   top: `${pos.yPercent}%`,
-                  width: MAGNET_SIZE,
-                  height: MAGNET_SIZE,
+                  width: magnetSize,
+                  height: magnetSize,
                   transform: `translate(-50%, -50%) rotate(${tilt}deg)`,
                   transition: isDragging
                     ? "transform 120ms ease-out"
@@ -465,7 +616,11 @@ const Homepage = () => {
 
       <Link
         to="/grid"
-        className="fixed bottom-6 right-6 z-50 w-10 h-10 flex items-center justify-center rounded-md text-black hover:bg-black/5 transition-colors"
+        className="fixed z-[60] w-10 h-10 flex items-center justify-center rounded-md text-black hover:bg-black/5 transition-colors"
+        style={{
+          bottom: "max(1.5rem, env(safe-area-inset-bottom))",
+          right: "max(1.5rem, env(safe-area-inset-right))",
+        }}
       >
         <LayoutGrid className="w-5 h-5" strokeWidth={2} />
       </Link>

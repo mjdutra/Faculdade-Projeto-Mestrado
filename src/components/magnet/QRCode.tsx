@@ -31,7 +31,7 @@ export default function QRCodeRelief({
   reliefHeight = 0.02,
   baseHeight = 0.015,
   errorCorrectionLevel = "H",
-  color = "#d6d6d6",
+  color = "#969292",
   onPointerDown,
   onPointerOver,
   onPointerOut,

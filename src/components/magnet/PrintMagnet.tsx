@@ -34,9 +34,6 @@ export default function PrintMagnet({ magnet, open, onClose }: Props) {
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
 
-  // Repõe o estado a partir do Firestore sempre que o painel abre
-  // (para o mesmo ou outro magnet) — substitui o que antes acontecia
-  // automaticamente por causa do remount a cada abertura.
   useEffect(() => {
     if (!magnet || !open) return;
 

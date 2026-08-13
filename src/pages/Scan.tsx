@@ -4,8 +4,6 @@ import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle, XCircle} from "lucide-react";
-
 import { useEffect } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 
@@ -163,22 +161,25 @@ const startScanning = () => {
                 <div className={`p-4 border-2 ${
                   isSuccess ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'
                 }`}>
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-start">
                     {isSuccess ? (
-                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <div className="w-5 h-5 text-green-600 mr-2" />
                     ) : (
-                      <XCircle className="w-5 h-5 text-red-600" />
+                      <div className="w-5 h-5 text-red-600 mr-2" />
                     )}
-                    <span className="font-semibold">
-                      {isSuccess ? 'QR Code Encontrado!' : 'QR Code Inválido'}
-                    </span>
+
+                    <div className="flex flex-col">
+                      <span className="font-semibold">
+                        {isSuccess ? 'QR Code Encontrado!' : 'QR Code Inválido'}
+                      </span>
+                      <p className="text-sm">
+                        {isSuccess
+                          ? `A redirecionar para a experiência: ${scanResult}`
+                          : 'O QR code não foi reconhecido. Tente novamente.'
+                        }
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-sm">
-                    {isSuccess 
-                      ? `A redirecionar para a experiência: ${scanResult}`
-                      : 'O QR code não foi reconhecido. Tente novamente.'
-                    }
-                  </p>
                 </div>
               )}
 

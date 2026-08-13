@@ -1,8 +1,10 @@
+"use client";
+
 import { MagnetViewer } from "@/components/magnet/MagnetViewer";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/config";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 import TopNav from "@/components/TopNav";
@@ -73,6 +75,8 @@ const getRandomPosition = (
 const Homepage = () => {
   const [magnets, setMagnets] = useState<Magnet[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [modelHoverId, setModelHoverId] = useState<string | null>(null);
   const [positions, setPositions] = useState<Record<string, Position>>({});
@@ -152,6 +156,49 @@ const Homepage = () => {
     });
   }, [magnets]);
 
+  // ── Sincronização com a URL (?magnet=id) ──────────────────────────────
+  // Abrir/fechar um magnet apenas altera a URL; este efeito é a única
+  // fonte de verdade para `selectedMagnet`, a partir dela. Isto garante
+  // que:
+  //  - um link/QR code com ?magnet=id abre automaticamente o magnet certo
+  //    assim que a lista termina de carregar;
+  //  - o botão "voltar" do browser fecha/troca o painel corretamente;
+  //  - se o magnet do URL for eliminado ou não existir, o painel fecha.
+  useEffect(() => {
+    if (loading) return;
+
+    const magnetId = searchParams.get("magnet");
+
+    setSelectedMagnet((prev) => {
+      if (!magnetId) return prev ? null : prev;
+      if (prev?.id === magnetId) return prev;
+      return magnets.find((m) => m.id === magnetId) ?? null;
+    });
+  }, [loading, magnets, searchParams]);
+
+  const openMagnet = useCallback(
+    (magnet: Magnet) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("magnet", magnet.id);
+        return next;
+      });
+    },
+    [setSearchParams]
+  );
+
+  const closeMagnet = useCallback(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("magnet");
+        return next;
+      },
+      { replace: true }
+    );
+  }, [setSearchParams]);
+  // ───────────────────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (!draggingId) return;
 
@@ -194,7 +241,7 @@ const Homepage = () => {
       if (start) {
         setTilts((prev) => ({ ...prev, [start.id]: 0 }));
         if (!start.moved) {
-          setSelectedMagnet(start.magnet);
+          openMagnet(start.magnet);
         }
       }
       dragStartRef.current = null;
@@ -206,7 +253,7 @@ const Homepage = () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [draggingId]);
+  }, [draggingId, openMagnet]);
 
   useEffect(() => {
     let frameId: number;
@@ -323,8 +370,19 @@ const Homepage = () => {
         delete next[id];
         return next;
       });
-      setSelectedMagnet(null);
       setModelHoverId((prev) => (prev === id ? null : prev));
+
+      // Garante que a URL não fica com um ?magnet=id de um magnet
+      // entretanto eliminado.
+      setSearchParams(
+        (prev) => {
+          if (prev.get("magnet") !== id) return prev;
+          const next = new URLSearchParams(prev);
+          next.delete("magnet");
+          return next;
+        },
+        { replace: true }
+      );
 
       if (!assetsFullyRemoved) {
         console.warn(
@@ -332,7 +390,7 @@ const Homepage = () => {
         );
       }
     },
-    []
+    [setSearchParams]
   );
 
   return (
@@ -420,7 +478,7 @@ const Homepage = () => {
 
       <MagnetPage
         magnet={selectedMagnet}
-        onClose={() => setSelectedMagnet(null)}
+        onClose={closeMagnet}
         onDeleted={handleMagnetDeleted}
       />
     </div>

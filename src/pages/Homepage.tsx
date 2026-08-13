@@ -178,6 +178,7 @@ const Homepage = () => {
 
   const dragStartRef = useRef<DragStart | null>(null);
   const lastPointerRef = useRef({ x: 0, y: 0 });
+  const activeTouchIdRef = useRef<number | null>(null);
 
   const isMobile = useIsMobile();
   const isMobileRef = useRef(isMobile);
@@ -191,8 +192,7 @@ const Homepage = () => {
   useEffect(() => { magnetsRef.current = magnets; }, [magnets]);
   useEffect(() => { draggingIdRef.current = draggingId; }, [draggingId]);
 
-  // Acompanha a largura real do contentor (redimensionar janela, rodar
-  // telemóvel, etc.) — é a partir dela que calculamos a margem horizontal.
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -209,7 +209,7 @@ const Homepage = () => {
     };
   }, []);
 
-  // Atribui posição inicial aos magnets ainda sem posição.
+
   useEffect(() => {
     setPositions((prev) => {
       const next = { ...prev };
@@ -398,6 +398,85 @@ const Homepage = () => {
   }, [draggingId, openMagnet, magnetSize]);
 
   useEffect(() => {
+    if (!draggingId) return;
+
+    const getActiveTouch = (e: TouchEvent) => {
+      const touchId = activeTouchIdRef.current;
+      for (let i = 0; i < e.touches.length; i++) {
+        if (e.touches[i].identifier === touchId) return e.touches[i];
+      }
+      return null;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const touch = getActiveTouch(e);
+      if (!touch) return;
+      e.preventDefault(); // impede o scroll da página durante drag
+
+      const container = containerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const xPercent = ((touch.clientX - rect.left) / rect.width) * 100;
+      const yPercent = ((touch.clientY - rect.top) / rect.height) * 100;
+
+      const bounds = getBounds(rect.width, magnetSize, isMobileRef.current, "clamp");
+
+      setPositions((prev) => ({
+        ...prev,
+        [draggingId]: {
+          xPercent: Math.min(bounds.xMax, Math.max(bounds.xMin, xPercent)),
+          yPercent: Math.min(bounds.yMax, Math.max(bounds.yMin, yPercent)),
+        },
+      }));
+
+      const start = dragStartRef.current;
+      if (start && start.id === draggingId && !start.moved) {
+        const totalDx = touch.clientX - start.x;
+        const totalDy = touch.clientY - start.y;
+        if (Math.hypot(totalDx, totalDy) > CLICK_DRAG_THRESHOLD) {
+          start.moved = true;
+        }
+      }
+
+      const dx = touch.clientX - lastPointerRef.current.x;
+      lastPointerRef.current = { x: touch.clientX, y: touch.clientY };
+
+      setTilts((prev) => ({
+        ...prev,
+        [draggingId]: Math.max(-MAX_TILT_DEG, Math.min(MAX_TILT_DEG, dx * TILT_FACTOR)),
+      }));
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      // se ainda houver um toque com o mesmo id ativo, ainda não acabou
+      const touchId = activeTouchIdRef.current;
+      for (let i = 0; i < e.touches.length; i++) {
+        if (e.touches[i].identifier === touchId) return;
+      }
+
+      const start = dragStartRef.current;
+      setDraggingId(null);
+      if (start) {
+        setTilts((prev) => ({ ...prev, [start.id]: 0 }));
+        if (!start.moved) {
+          openMagnet(start.magnet);
+        }
+      }
+      dragStartRef.current = null;
+      activeTouchIdRef.current = null;
+    };
+
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("touchend", handleTouchEnd);
+    window.addEventListener("touchcancel", handleTouchEnd);
+    return () => {
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("touchcancel", handleTouchEnd);
+    };
+  }, [draggingId, openMagnet, magnetSize]);
+
+  useEffect(() => {
     let frameId: number;
 
     const step = () => {
@@ -578,8 +657,9 @@ const Homepage = () => {
                   transition: isDragging
                     ? "transform 120ms ease-out"
                     : "transform 450ms cubic-bezier(0.22, 1, 0.36, 1)",
-                  pointerEvents: isDragging || isModelHovered ? "auto" : "none",
+                  pointerEvents: isMobile || isDragging || isModelHovered ? "auto" : "none",
                   cursor: isDragging ? "grabbing" : undefined,
+                  touchAction: isMobile ? "none" : undefined,
                 }}
                 onMouseDown={(e) => {
                   e.preventDefault();
@@ -593,7 +673,22 @@ const Homepage = () => {
                   lastPointerRef.current = { x: e.clientX, y: e.clientY };
                   setDraggingId(magnet.id);
                 }}
+                onTouchStart={(e) => {
+                  const touch = e.touches[0];
+                  if (!touch) return;
+                  activeTouchIdRef.current = touch.identifier;
+                  dragStartRef.current = {
+                    id: magnet.id,
+                    magnet,
+                    x: touch.clientX,
+                    y: touch.clientY,
+                    moved: false,
+                  };
+                  lastPointerRef.current = { x: touch.clientX, y: touch.clientY };
+                  setDraggingId(magnet.id);
+                }}
               >
+
                 <MagnetViewer
                   modelUrl={magnet.modelURL}
                   onModelHoverChange={(hovering) =>

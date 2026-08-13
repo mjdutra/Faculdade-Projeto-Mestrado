@@ -90,7 +90,7 @@ export function Hotspot({
       <meshBasicMaterial color={highlighted ? "#ffffff" : "#ff0000"} />
 
       {showContent && !inVR && (
-        <Html center style={{ pointerEvents: "none", transform: "translateY(-120%)" }}>
+        <Html center style={{ pointerEvents: "none", transform: "translate(5%, -50%)" }}>
           <HotspotTooltip point={point} />
         </Html>
       )}

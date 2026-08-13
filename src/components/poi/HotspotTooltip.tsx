@@ -17,9 +17,9 @@ interface HotspotTooltipProps {
 
 export function HotspotTooltip({ point }: HotspotTooltipProps) {
   return (
-    <div className="w-56 p-3 bg-white border border-black shadow-lg text-sm text-black">
+    <div className="w-56 p-3 bg-white/60 shadow-lg rounded-sm text-sm text-black">
       <p className="font-black uppercase text-xs tracking-widest">
-        {point.title || "Sem título"}
+        {point.title || ""}
       </p>
       {point.description && <p className="mt-1 text-gray-600">{point.description}</p>}
       {point.media?.map((media, i) => MEDIA_RENDERERS[media.type]?.(media, `${point.id}-media-${i}`))}

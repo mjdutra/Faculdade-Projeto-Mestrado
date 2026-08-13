@@ -176,6 +176,8 @@ function Sphere({
   const texture = useMemo(() => {
     const t = new THREE.VideoTexture(video);
     t.colorSpace = THREE.SRGBColorSpace;
+    t.wrapS = THREE.RepeatWrapping;
+    t.repeat.x = -1;
     return t;
   }, [video]);
 

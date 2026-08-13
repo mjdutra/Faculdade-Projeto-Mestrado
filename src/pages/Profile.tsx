@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/firebase/config";
 import { cn } from "@/lib/utils";
+import { shortenLocation } from "@/lib/locationshort";
 import { MagnetViewer } from "@/components/magnet/MagnetViewer";
 import MagnetPage from "@/components/magnet/MagnetPage";
 import TopNav from "@/components/TopNav";
@@ -185,7 +186,7 @@ const Profile = () => {
                         hoveredId === magnet.id && !isDragging ? (
                           <>
                             <p className="font-semibold">{magnet.titulo}</p>
-                            <p className="text-gray-500">{magnet.localização}</p>
+                            <p className="text-gray-500">{shortenLocation(magnet.localização)}</p>
                             <p className="mt-1 text-gray-600">{magnet.descrição}</p>
                           </>
                         ) : undefined

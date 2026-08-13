@@ -576,11 +576,10 @@ const Submit = () => {
                       {isOptimizing && (
                         <div className="mt-4 p-3 bg-gray-50 text-sm text-gray-700 space-y-2 text-left">
                           <div className="flex justify-between text-xs uppercase tracking-widest font-bold text-gray-500">
-                           <span>
-                              A comprimir vídeo
-                              {optimizationTargetHeight
-                                ? ` (${optimizationScaled ? `→ ${optimizationTargetHeight}p` : "resolução original"}, qualidade CRF ${optimizationCrf})`
-                                : ""}
+                            <span>
+                              {optimizationProgress >= 100
+                                ? "Vídeo completamente comprimido"
+                                : "A comprimir vídeo"}
                             </span>
                             <span>{optimizationProgress}%</span>
                           </div>

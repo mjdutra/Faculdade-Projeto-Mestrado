@@ -7,6 +7,7 @@ import { db } from "@/firebase/config";
 import { Link, useSearchParams } from "react-router-dom";
 import { LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { shortenLocation } from "@/lib/locationshort";
 import TopNav from "@/components/TopNav";
 import MagnetPage from "@/components/magnet/MagnetPage";
 import type { Magnet } from "@/types/magnet";
@@ -156,14 +157,8 @@ const Homepage = () => {
     });
   }, [magnets]);
 
-  // ── Sincronização com a URL (?magnet=id) ──────────────────────────────
-  // Abrir/fechar um magnet apenas altera a URL; este efeito é a única
-  // fonte de verdade para `selectedMagnet`, a partir dela. Isto garante
-  // que:
-  //  - um link/QR code com ?magnet=id abre automaticamente o magnet certo
-  //    assim que a lista termina de carregar;
-  //  - o botão "voltar" do browser fecha/troca o painel corretamente;
-  //  - se o magnet do URL for eliminado ou não existir, o painel fecha.
+
+
   useEffect(() => {
     if (loading) return;
 
@@ -372,8 +367,7 @@ const Homepage = () => {
       });
       setModelHoverId((prev) => (prev === id ? null : prev));
 
-      // Garante que a URL não fica com um ?magnet=id de um magnet
-      // entretanto eliminado.
+
       setSearchParams(
         (prev) => {
           if (prev.get("magnet") !== id) return prev;
@@ -458,7 +452,7 @@ const Homepage = () => {
                     isModelHovered && !isDragging ? (
                       <>
                         <p className="font-semibold">{magnet.titulo}</p>
-                        <p className="text-gray-500">{magnet.localização}</p>
+                        <p className="text-gray-500">{shortenLocation(magnet.localização)}</p>
                         <p className="mt-1 text-gray-600">{magnet.descrição}</p>
                       </>
                     ) : undefined

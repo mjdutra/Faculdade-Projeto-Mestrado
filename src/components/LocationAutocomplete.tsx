@@ -25,6 +25,35 @@ interface Props {
 const DEBOUNCE_MS = 400;
 const MIN_QUERY_LENGTH = 3;
 
+const PLACE_KEYS = [
+  "tourism",
+  "leisure",
+  "historic",
+  "natural",
+  "amenity",
+  "shop",
+  "man_made",
+  "building",
+  "office",
+  "craft",
+  "aeroway",
+  "railway",
+  "road",
+  "neighbourhood",
+  "suburb",
+];
+const CITY_KEYS = ["city", "town", "village", "municipality", "county"];
+function buildShortLabel(item: any): string {
+  const address = item?.address ?? {};
+  const place = PLACE_KEYS.map((key) => address[key]).find(Boolean);
+  const city = CITY_KEYS.map((key) => address[key]).find(Boolean);
+  const country = address.country;
+  const parts = [place, city, country].filter(Boolean) as string[];
+  const deduped = parts.filter((part, i) => part !== parts[i - 1]);
+
+  return deduped.length > 0 ? deduped.join(", ") : item.display_name;
+}
+
 export default function LocationAutocomplete({
   id,
   value,
@@ -42,7 +71,7 @@ export default function LocationAutocomplete({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Fecha o dropdown ao clicar fora do campo/lista
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -100,8 +129,7 @@ export default function LocationAutocomplete({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const next = e.target.value;
-    // Qualquer edição manual invalida as coordenadas anteriores,
-    // até haver uma nova seleção da lista.
+
     onChange(next, null);
 
     if (debounceRef.current) clearTimeout(debounceRef.current);

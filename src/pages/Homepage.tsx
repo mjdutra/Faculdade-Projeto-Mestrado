@@ -447,8 +447,52 @@ const Homepage = () => {
       }));
     };
 
+    useEffect(() => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const handleTouchStartCapture = (e: TouchEvent) => {
+        if (!isMobileRef.current) return;
+
+        const target = e.target as HTMLElement;
+        const magnetEl = target.closest<HTMLElement>("[data-magnet-id]");
+        if (!magnetEl) return;
+
+        const magnetId = magnetEl.dataset.magnetId;
+        const magnet = magnetsRef.current.find((m) => m.id === magnetId);
+        if (!magnet) return;
+
+        const touch = e.touches[0];
+        if (!touch) return;
+
+        e.stopPropagation(); // impede o canvas por baixo de também reagir
+
+        activeTouchIdRef.current = touch.identifier;
+        dragStartRef.current = {
+          id: magnet.id,
+          magnet,
+          x: touch.clientX,
+          y: touch.clientY,
+          moved: false,
+        };
+        lastPointerRef.current = { x: touch.clientX, y: touch.clientY };
+        setDraggingId(magnet.id);
+      };
+
+      container.addEventListener("touchstart", handleTouchStartCapture, {
+        capture: true,
+        passive: true,
+      });
+      return () => {
+        container.removeEventListener(
+          "touchstart",
+          handleTouchStartCapture,
+          { capture: true } as EventListenerOptions
+        );
+      };
+    }, []);
+
     const handleTouchEnd = (e: TouchEvent) => {
-      // se ainda houver um toque com o mesmo id ativo, ainda não acabou
       const touchId = activeTouchIdRef.current;
       for (let i = 0; i < e.touches.length; i++) {
         if (e.touches[i].identifier === touchId) return;
@@ -644,6 +688,7 @@ const Homepage = () => {
             return (
               <div
                 key={magnet.id}
+                data-magnet-id={magnet.id}
                 className={cn(
                   "absolute select-none",
                   isDragging ? "z-50" : isModelHovered ? "z-40" : "z-20"
@@ -671,20 +716,6 @@ const Homepage = () => {
                     moved: false,
                   };
                   lastPointerRef.current = { x: e.clientX, y: e.clientY };
-                  setDraggingId(magnet.id);
-                }}
-                onTouchStart={(e) => {
-                  const touch = e.touches[0];
-                  if (!touch) return;
-                  activeTouchIdRef.current = touch.identifier;
-                  dragStartRef.current = {
-                    id: magnet.id,
-                    magnet,
-                    x: touch.clientX,
-                    y: touch.clientY,
-                    moved: false,
-                  };
-                  lastPointerRef.current = { x: touch.clientX, y: touch.clientY };
                   setDraggingId(magnet.id);
                 }}
               >

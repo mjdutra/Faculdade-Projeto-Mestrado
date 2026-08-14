@@ -368,6 +368,10 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
   const [isVRAvailable, setIsVRAvailable] = useState(false);
   const [isInVR, setIsInVR] = useState(false);
 
+  // Verdadeiro quando o utilizador pausou intencionalmente (botão de pausa),
+  // para o hover num POI não retomar a reprodução sem ele querer.
+  const manuallyPausedRef = useRef(false);
+
 
   function VROffscreenIndicators({
     points,
@@ -489,6 +493,7 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
     videoRef.current = v;
     setVideoEl(v);
     v.play().catch(() => {});
+    manuallyPausedRef.current = false;
 
     setSelectedHotspotId(null);
     setHoveredHotspotId(null);
@@ -583,12 +588,24 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
   useImperativeHandle(
     ref,
     () => ({
-      play: () => videoRef.current?.play().catch(() => {}),
-      pause: () => videoRef.current?.pause(),
+      play: () => {
+        manuallyPausedRef.current = false;
+        videoRef.current?.play().catch(() => {});
+      },
+      pause: () => {
+        manuallyPausedRef.current = true;
+        videoRef.current?.pause();
+      },
       togglePlay: () => {
         const v = videoRef.current;
         if (!v) return;
-        v.paused ? v.play().catch(() => {}) : v.pause();
+        if (v.paused) {
+          manuallyPausedRef.current = false;
+          v.play().catch(() => {});
+        } else {
+          manuallyPausedRef.current = true;
+          v.pause();
+        }
       },
       seek: (time: number) => {
         if (videoRef.current) videoRef.current.currentTime = time;
@@ -618,7 +635,11 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
       }
 
       if (prev === id) {
-        videoRef.current?.play().catch(() => {});
+        // Só retoma se o vídeo não tiver sido pausado intencionalmente
+        // pelo utilizador antes de passar o rato pelo POI.
+        if (!manuallyPausedRef.current) {
+          videoRef.current?.play().catch(() => {});
+        }
         return null;
       }
 
@@ -666,6 +687,7 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
       }
       // Entrar em VR
       await videoRef.current?.play();
+      manuallyPausedRef.current = false;
       await xrStore.enterVR();
     } catch (error) {
       console.error("Erro ao alterar modo VR:", error);

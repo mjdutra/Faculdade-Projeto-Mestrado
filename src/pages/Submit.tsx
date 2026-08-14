@@ -233,6 +233,16 @@ const Submit = () => {
     );
   };
 
+  // Atualiza vários campos de um POI de uma vez (evita 2 setPoints seguidos
+  // durante o arrasto no ecrã, onde yaw e pitch mudam sempre juntos).
+  const updatePointFields = (id: string, fields: Partial<PointOfInterest>) => {
+    setPoints((prev) =>
+      prev.map((point) =>
+        point.id === id ? { ...point, ...fields } : point
+      )
+    );
+  };
+
   const canProceed = () => {
     if (isOptimizing) return false;
     if (currentStep === 1){
@@ -419,6 +429,12 @@ const Submit = () => {
                             };
                             setPoints((prev) => [...prev, newPoint]);
                           }}
+                          onPointDrag={(id, { yaw, pitch }) =>
+                            updatePointFields(id, { yaw, pitch })
+                          }
+                          onPointDragEnd={(id, { yaw, pitch }) =>
+                            updatePointFields(id, { yaw, pitch })
+                          }
                           onTimeUpdate={setCurrentTime}
                           onDurationChange={setDuration}
                           onPlayingChange={setIsPlaying}
@@ -444,6 +460,12 @@ const Submit = () => {
                           }))}
                           onPlayPause={() => viewerRef.current?.togglePlay()}
                           onSeek={(time) => viewerRef.current?.seek(time)}
+                          onMarkerTimeChange={(id, newTime) =>
+                            updatePoint(id, "timestamp", newTime)
+                          }
+                          onMarkerDragEnd={(id, finalTime) =>
+                            updatePoint(id, "timestamp", finalTime)
+                          }
                           onVolumeChange={(value) => viewerRef.current?.setVolume(value)}
                           onToggleMute={() => viewerRef.current?.toggleMute()}
                           onToggleFullscreen={toggleFullscreen}

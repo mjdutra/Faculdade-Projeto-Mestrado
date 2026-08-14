@@ -35,10 +35,19 @@ interface Video360ViewerProps {
   onVolumeChange?: (volume: number, muted: boolean) => void;
   onEnded?: () => void;
   onPositionClick?: (position: { yaw: number; pitch: number }) => void;
+  /**
+   * Chamado continuamente enquanto um POI existente está a ser arrastado
+   * no ecrã. O pai deve atualizar o yaw/pitch desse ponto no estado para
+   * o marcador acompanhar o arrasto em tempo real.
+   */
+  onPointDrag?: (id: string, position: { yaw: number; pitch: number }) => void;
+  /** Chamado quando o arrasto de um POI termina (para persistir, ex: Firestore). */
+  onPointDragEnd?: (id: string, position: { yaw: number; pitch: number }) => void;
 }
 
 interface CameraControllerHandle {
   lookAt: (yaw: number, pitch: number) => void;
+  setEnabled: (enabled: boolean) => void;
 }
 
 interface IndicatorState extends EdgeIndicator {
@@ -73,6 +82,9 @@ const CameraController = forwardRef<CameraControllerHandle, {}>(
         camera.position.copy(dir.clone().multiplyScalar(-distance));
         camera.lookAt(0, 0, 0);
         orbitRef.current.update();
+      },
+      setEnabled: (enabled: boolean) => {
+        if (orbitRef.current) orbitRef.current.enabled = enabled;
       },
     }));
 
@@ -166,6 +178,10 @@ function Sphere({
   onHoverChange,
   selectedHotspotId,
   onSelectChange,
+  draggingPointId,
+  onHotspotDragStart,
+  onHotspotDragMove,
+  onHotspotDragEnd,
 }: {
   video: HTMLVideoElement;
   points: PointOfInterest[];
@@ -175,7 +191,14 @@ function Sphere({
   onHoverChange?: (id: string, hovering: boolean) => void;
   selectedHotspotId?: string | null;
   onSelectChange?: (id: string) => void;
+  draggingPointId?: string | null;
+  onHotspotDragStart?: (id: string) => void;
+  onHotspotDragMove?: (id: string, yaw: number, pitch: number) => void;
+  onHotspotDragEnd?: (id: string) => void;
 }) {
+  const { raycaster, pointer, camera } = useThree();
+  const sphereMeshRef = useRef<THREE.Mesh>(null);
+
   const texture = useMemo(() => {
     const t = new THREE.VideoTexture(video);
     t.colorSpace = THREE.SRGBColorSpace;
@@ -193,6 +216,15 @@ function Sphere({
   useFrame(() => {
     if (video.readyState >= video.HAVE_CURRENT_DATA) {
       texture.needsUpdate = true;
+    }
+
+    if (draggingPointId && sphereMeshRef.current) {
+      raycaster.setFromCamera(pointer, camera);
+      const hit = raycaster.intersectObject(sphereMeshRef.current, false)[0];
+      if (hit) {
+        const { yaw, pitch } = vectorToYawPitch(hit.point);
+        onHotspotDragMove?.(draggingPointId, yaw, pitch);
+      }
     }
   });
 
@@ -215,9 +247,19 @@ function Sphere({
     onPositionClick(vectorToYawPitch(event.point));
   };
 
+  // Termina o arrasto de um hotspot em qualquer pointerup global — mesmo
+  // que o cursor já não esteja sobre a esfera nesse momento.
+  useEffect(() => {
+    if (!draggingPointId) return;
+    const handleGlobalUp = () => onHotspotDragEnd?.(draggingPointId);
+    window.addEventListener("pointerup", handleGlobalUp);
+    return () => window.removeEventListener("pointerup", handleGlobalUp);
+  }, [draggingPointId, onHotspotDragEnd]);
+
   return (
     <>
-      <mesh 
+      <mesh
+        ref={sphereMeshRef}
         onPointerDown={handlePointerDown} 
         onPointerUp={handlePointerUp}
         pointerEventsType={{ deny: "grab" }}>
@@ -233,8 +275,10 @@ function Sphere({
           position={yawPitchToVector(point.yaw, point.pitch, 49.8)}
           isAddingPOI={isAddingPOI}
           isSelected={selectedHotspotId === point.id}
+          isDragging={draggingPointId === point.id}
           onHoverChange={onHoverChange}
           onSelectChange={onSelectChange}
+          onDragStart={onHotspotDragStart}
         />
       ))}
     </>
@@ -323,6 +367,8 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
     onVolumeChange,
     onEnded,
     onPositionClick,
+    onPointDrag,
+    onPointDragEnd,
   },
   ref
 ) {
@@ -331,6 +377,8 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
   const cameraControllerRef = useRef<CameraControllerHandle>(null);
   const [hoveredHotspotId, setHoveredHotspotId] = useState<string | null>(null);
   const [selectedHotspotId, setSelectedHotspotId] = useState<string | null>(null);
+  const [draggingPointId, setDraggingPointId] = useState<string | null>(null);
+  const lastDragPositionRef = useRef<{ yaw: number; pitch: number } | null>(null);
   const [offscreenIndicators, setOffscreenIndicators] = useState<IndicatorState[]>([]);
   const [isVRAvailable, setIsVRAvailable] = useState(false);
   const [isInVR, setIsInVR] = useState(false);
@@ -597,6 +645,32 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
     setSelectedHotspotId((prev) => (prev === id ? null : id));   
   }, []);
 
+  // Arrasto de hotspot
+  const handleHotspotDragStart = useCallback((id: string) => {
+    setDraggingPointId(id);
+    cameraControllerRef.current?.setEnabled(false);
+  }, []);
+
+  const handleHotspotDragMove = useCallback(
+    (id: string, yaw: number, pitch: number) => {
+      lastDragPositionRef.current = { yaw, pitch };
+      onPointDrag?.(id, { yaw, pitch });
+    },
+    [onPointDrag]
+  );
+
+  const handleHotspotDragEnd = useCallback(
+    (id: string) => {
+      setDraggingPointId(null);
+      cameraControllerRef.current?.setEnabled(true);
+      if (lastDragPositionRef.current) {
+        onPointDragEnd?.(id, lastDragPositionRef.current);
+      }
+      lastDragPositionRef.current = null;
+    },
+    [onPointDragEnd]
+  );
+
   const handleVRButton = async () => {
     try {
       //Sair de VR
@@ -633,6 +707,10 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
               onHoverChange={handleHoverChange}
               selectedHotspotId={selectedHotspotId}
               onSelectChange={handleSelectChange}
+              draggingPointId={draggingPointId}
+              onHotspotDragStart={handleHotspotDragStart}
+              onHotspotDragMove={handleHotspotDragMove}
+              onHotspotDragEnd={handleHotspotDragEnd}
             />
 
             <OffscreenIndicators

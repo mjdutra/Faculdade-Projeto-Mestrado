@@ -6,9 +6,7 @@ import { Pause, Play, Maximize, Minimize, Volume2, VolumeX } from "lucide-react"
 export interface VideoMarker {
   id: string;
   timestamp: number;
-  /** Duração (segundos) da janela em que o hotspot está ativo. Ignorado se `permanent`. */
   duration?: number;
-  /** Se true, a janela ativa estende-se até ao fim do vídeo. */
   permanent?: boolean;
   label?: string;
 }
@@ -20,13 +18,14 @@ interface VideoControlsProps {
   volume: number;
   isMuted: boolean;
   isFullscreen?: boolean;
-  /** Pontos de Interesse a marcar na timeline (opcional — só desktop). */
   markers?: VideoMarker[];
   onPlayPause: () => void;
   onSeek: (time: number) => void;
   onVolumeChange?: (value: number) => void;
   onToggleMute?: () => void;
   onToggleFullscreen?: () => void;
+  onMarkerTimeChange?: (markerId: string, newTimestamp: number) => void;
+  onMarkerDragEnd?: (markerId: string, finalTimestamp: number) => void;
 }
 
 function formatTime(seconds: number) {
@@ -49,22 +48,36 @@ export default function VideoControls({
   onVolumeChange,
   onToggleMute,
   onToggleFullscreen,
+  onMarkerTimeChange,
+  onMarkerDragEnd,
 }: VideoControlsProps) {
   const progressRef = useRef<HTMLDivElement>(null);
   const isSeekingRef = useRef(false);
 
-  const seekToClientX = useCallback(
+  // Id do marcador atualmente a ser arrastado (null se nenhum).
+  const draggingMarkerIdRef = useRef<string | null>(null);
+  // Distingue clique de arrasto
+  const markerDraggedRef = useRef(false);
+
+  const timeFromClientX = useCallback(
     (clientX: number) => {
       const bar = progressRef.current;
-      if (!bar || !duration) return;
+      if (!bar || !duration) return 0;
       const rect = bar.getBoundingClientRect();
       const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-      onSeek(ratio * duration);
+      return ratio * duration;
     },
-    [duration, onSeek]
+    [duration]
   );
 
-  // Clicar na timeline avança imediatamente para esse ponto
+  const seekToClientX = useCallback(
+    (clientX: number) => {
+      onSeek(timeFromClientX(clientX));
+    },
+    [timeFromClientX, onSeek]
+  );
+
+  // Clicar timeline avança para esse ponto
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       isSeekingRef.current = true;
@@ -74,7 +87,7 @@ export default function VideoControls({
     [seekToClientX]
   );
 
-  // Arrastar o cursor atualiza o tempo
+  // Arrastar cursor atualiza o tempo
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (!isSeekingRef.current) return;
@@ -88,9 +101,6 @@ export default function VideoControls({
   }, []);
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
-
-  // Mínimo de largura visível para janelas muito curtas (senão o red
-  // range fica invisível ou é só 1px).
   const MIN_RANGE_PERCENT = 0.6;
 
   return (
@@ -104,9 +114,6 @@ export default function VideoControls({
         className="relative h-3 w-full cursor-pointer flex items-center touch-none"
       >
         <div className="relative h-1 w-full rounded-full bg-white/30 overflow-hidden">
-          {/* Janelas de atividade dos hotspots — a vermelho, por baixo do
-              progresso já visto (branco), para se perceber de imediato
-              onde é que cada ponto vai aparecer. */}
           {duration > 0 &&
             markers?.map((marker) => {
               const startPercent = Math.min(100, Math.max(0, (marker.timestamp / duration) * 100));
@@ -136,9 +143,7 @@ export default function VideoControls({
           style={{ left: `calc(${progressPercent}% - 6px)` }}
         />
 
-        {/* Marcador clicável no início de cada janela — impede o "seek"
-            da timeline por baixo (stopPropagation no pointerDown) para
-            que clicar salte exatamente para o início do hotspot. */}
+
         {duration > 0 &&
           markers?.map((marker) => {
             const percent = Math.min(100, Math.max(0, (marker.timestamp / duration) * 100));
@@ -147,13 +152,33 @@ export default function VideoControls({
                 key={marker.id}
                 type="button"
                 title={marker.label || formatTime(marker.timestamp)}
-                aria-label={`Ir para ${marker.label || formatTime(marker.timestamp)}`}
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
+                aria-label={`${marker.label || formatTime(marker.timestamp)} — arrastar para reposicionar`}
+                onPointerDown={(e) => {
                   e.stopPropagation();
-                  onSeek(marker.timestamp);
+                  draggingMarkerIdRef.current = marker.id;
+                  markerDraggedRef.current = false;
+                  (e.target as HTMLElement).setPointerCapture(e.pointerId);
                 }}
-                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-white/80 hover:scale-125 hover:ring-red-300 transition-transform"
+                onPointerMove={(e) => {
+                  if (draggingMarkerIdRef.current !== marker.id) return;
+                  e.stopPropagation();
+                  markerDraggedRef.current = true;
+                  const newTime = timeFromClientX(e.clientX);
+                  onMarkerTimeChange?.(marker.id, newTime);
+                }}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  if (draggingMarkerIdRef.current !== marker.id) return;
+                  if (markerDraggedRef.current) {
+                    const finalTime = timeFromClientX(e.clientX);
+                    onMarkerDragEnd?.(marker.id, finalTime);
+                  } else {
+                    // Não houve arrasto salta para o marcador.
+                    onSeek(marker.timestamp);
+                  }
+                  draggingMarkerIdRef.current = null;
+                }}
+                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-white/80 hover:scale-125 hover:ring-red-300 transition-transform cursor-grab active:cursor-grabbing touch-none"
                 style={{ left: `${percent}%` }}
               />
             );

@@ -28,20 +28,13 @@ interface Video360ViewerProps {
   videoUrl: string;
   points: PointOfInterest[];
   isAddingPOI?: boolean;
-  mirrorVideo?: boolean;
   onTimeUpdate?: (time: number) => void;
   onDurationChange?: (duration: number) => void;
   onPlayingChange?: (isPlaying: boolean) => void;
   onVolumeChange?: (volume: number, muted: boolean) => void;
   onEnded?: () => void;
   onPositionClick?: (position: { yaw: number; pitch: number }) => void;
-  /**
-   * Chamado continuamente enquanto um POI existente está a ser arrastado
-   * no ecrã. O pai deve atualizar o yaw/pitch desse ponto no estado para
-   * o marcador acompanhar o arrasto em tempo real.
-   */
   onPointDrag?: (id: string, position: { yaw: number; pitch: number }) => void;
-  /** Chamado quando o arrasto de um POI termina (para persistir, ex: Firestore). */
   onPointDragEnd?: (id: string, position: { yaw: number; pitch: number }) => void;
 }
 
@@ -173,7 +166,6 @@ function Sphere({
   video,
   points,
   isAddingPOI,
-  mirrorVideo,
   onPositionClick,
   onHoverChange,
   selectedHotspotId,
@@ -186,7 +178,6 @@ function Sphere({
   video: HTMLVideoElement;
   points: PointOfInterest[];
   isAddingPOI: boolean;
-  mirrorVideo: boolean;
   onPositionClick?: (position: { yaw: number; pitch: number }) => void;
   onHoverChange?: (id: string, hovering: boolean) => void;
   selectedHotspotId?: string | null;
@@ -203,13 +194,8 @@ function Sphere({
     const t = new THREE.VideoTexture(video);
     t.colorSpace = THREE.SRGBColorSpace;
 
-    if (mirrorVideo) {
-      t.wrapS = THREE.RepeatWrapping;
-      t.repeat.x = -1;
-    }
-
     return t;
-  }, [video, mirrorVideo]);
+  }, [video]);
 
   useEffect(() => () => texture.dispose(), [texture]);
 
@@ -360,7 +346,6 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
     videoUrl,
     points,
     isAddingPOI = false,
-    mirrorVideo = true,
     onTimeUpdate,
     onDurationChange,
     onPlayingChange,
@@ -702,7 +687,6 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
               video={videoEl}
               points={points}
               isAddingPOI={isAddingPOI}
-              mirrorVideo={mirrorVideo}
               onPositionClick={onPositionClick}
               onHoverChange={handleHoverChange}
               selectedHotspotId={selectedHotspotId}

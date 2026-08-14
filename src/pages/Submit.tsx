@@ -416,7 +416,6 @@ const Submit = () => {
                           points={points}
                           videoUrl={videoObjectUrl}
                           isAddingPOI={isAddingPOI}
-                          mirrorVideo={false}
                           onPositionClick={(position) => {
                             const newPoint: PointOfInterest = {
                               id: Date.now().toString(),

@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useEffect } from "react";
 import { Html5Qrcode } from "html5-qrcode";
-
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/firebase/config"; 
 
 const Scan = () => {
   const [isScanning, setIsScanning] = useState(false);
@@ -14,6 +14,31 @@ const Scan = () => {
   const [isSuccess, setIsSuccess] = useState(false);
   const qrScanner = useRef<Html5Qrcode | null>(null);
 
+
+  const [existingIds, setExistingIds] = useState<string[]>([]);
+  const [manualValue, setManualValue] = useState("");
+
+  useEffect(() => {
+    const fetchExistingIds = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, "magnets"));
+        const ids = snapshot.docs.map((doc) => doc.id);
+        setExistingIds(ids);
+      } catch (err) {
+        console.error("Erro ao carregar magnets da Firebase:", err);
+      }
+    };
+
+    fetchExistingIds();
+  }, []);
+
+  const suggestions = (
+    manualValue.trim()
+      ? existingIds.filter((id) =>
+          id.toLowerCase().includes(manualValue.trim().toLowerCase())
+        )
+      : existingIds
+  ).slice(0, 3);
 
   useEffect(() => {
     return () => {
@@ -90,8 +115,7 @@ const startScanning = () => {
   const manualInput = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const formData = new FormData(e.currentTarget);
-    const magnetId = (formData.get("qrCode") as string)?.trim();
+    const magnetId = manualValue.trim();
 
     if (!magnetId) return;
 
@@ -112,7 +136,6 @@ const startScanning = () => {
         Digitalizar QR Code
         </h2>
 
-              {/* Scanner Area */}
               <div className="relative">
                 <div className="aspect-video overflow-hidden relative">
                 {isScanning ? (
@@ -145,7 +168,6 @@ const startScanning = () => {
               )}
               </div>
                 
-                {/* Scanning Animation */}
                 {isScanning && (
                   <div className="absolute inset-0 pointer-events-none">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500 animate-pulse"></div>
@@ -195,7 +217,35 @@ const startScanning = () => {
                     name="qrCode"
                     className="rounded-none mt-2"
                     placeholder="ID do magnet"
+                    value={manualValue}
+                    onChange={(e) => setManualValue(e.target.value)}
+                    autoComplete="off"
                 />
+
+                {/* Sugestões: até 3 ids existentes na Firebase */}
+                {suggestions.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {suggestions.map((id) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setManualValue(id)}
+                        className="
+                          text-xs
+                          uppercase
+                          border
+                          border-neutral-400
+                          px-2
+                          py-1
+                          hover:bg-neutral-100
+                        "
+                      >
+                        {id}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <Button
                     type="submit"
                     className="

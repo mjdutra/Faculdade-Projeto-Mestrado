@@ -28,6 +28,7 @@ interface Video360ViewerProps {
   videoUrl: string;
   points: PointOfInterest[];
   isAddingPOI?: boolean;
+  mirrorVideo?: boolean;
   onTimeUpdate?: (time: number) => void;
   onDurationChange?: (duration: number) => void;
   onPlayingChange?: (isPlaying: boolean) => void;
@@ -160,6 +161,7 @@ function Sphere({
   video,
   points,
   isAddingPOI,
+  mirrorVideo,
   onPositionClick,
   onHoverChange,
   selectedHotspotId,
@@ -168,6 +170,7 @@ function Sphere({
   video: HTMLVideoElement;
   points: PointOfInterest[];
   isAddingPOI: boolean;
+  mirrorVideo: boolean;
   onPositionClick?: (position: { yaw: number; pitch: number }) => void;
   onHoverChange?: (id: string, hovering: boolean) => void;
   selectedHotspotId?: string | null;
@@ -176,10 +179,14 @@ function Sphere({
   const texture = useMemo(() => {
     const t = new THREE.VideoTexture(video);
     t.colorSpace = THREE.SRGBColorSpace;
-    t.wrapS = THREE.RepeatWrapping;
-    t.repeat.x = -1;
+
+    if (mirrorVideo) {
+      t.wrapS = THREE.RepeatWrapping;
+      t.repeat.x = -1;
+    }
+
     return t;
-  }, [video]);
+  }, [video, mirrorVideo]);
 
   useEffect(() => () => texture.dispose(), [texture]);
 
@@ -305,7 +312,18 @@ function VRExitButton({ onExit }: { onExit: () => void }) {
 }
 
 const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(function Video360Viewer(
-  { videoUrl, points, isAddingPOI = false, onTimeUpdate, onDurationChange, onPlayingChange, onVolumeChange, onEnded, onPositionClick },
+  {
+    videoUrl,
+    points,
+    isAddingPOI = false,
+    mirrorVideo = true,
+    onTimeUpdate,
+    onDurationChange,
+    onPlayingChange,
+    onVolumeChange,
+    onEnded,
+    onPositionClick,
+  },
   ref
 ) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -610,6 +628,7 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
               video={videoEl}
               points={points}
               isAddingPOI={isAddingPOI}
+              mirrorVideo={mirrorVideo}
               onPositionClick={onPositionClick}
               onHoverChange={handleHoverChange}
               selectedHotspotId={selectedHotspotId}

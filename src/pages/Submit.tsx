@@ -200,6 +200,27 @@ const Submit = () => {
 
   // Step 4 – Magnet GLB ----------------------------------------------------------------------
   const [glbFile, setGlbFile] = useState<File | null>(null);
+  const [glbError, setGlbError] = useState<string | null>(null);
+  const MAX_GLB_SIZE = 10 * 1024 * 1024; // 10MB
+
+  const handleGlbSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    e.target.value = ""; // permite reselecionar o mesmo ficheiro depois
+
+    if (!file) return;
+
+    if (file.size > MAX_GLB_SIZE) {
+      setGlbFile(null);
+      setGlbError(
+        `O ficheiro tem ${(file.size / 1024 / 1024).toFixed(2)} 
+        MB. Escolha um ficheiro .glb mais pequeno.`
+      );
+      return;
+    }
+
+    setGlbError(null);
+    setGlbFile(file);
+  };
 
   const addPoint = () => {
     setPoints([
@@ -233,8 +254,6 @@ const Submit = () => {
     );
   };
 
-  // Atualiza vários campos de um POI de uma vez (evita 2 setPoints seguidos
-  // durante o arrasto no ecrã, onde yaw e pitch mudam sempre juntos).
   const updatePointFields = (id: string, fields: Partial<PointOfInterest>) => {
     setPoints((prev) =>
       prev.map((point) =>
@@ -267,7 +286,7 @@ const Submit = () => {
     setIsSubmitting(true);
 
     if (!glbFile) {
-      alert("Escolha um modelo 3D.");
+      alert("Escolha um modelo 3D com menos de 10MB.");
       return;
     }
 
@@ -359,6 +378,7 @@ const Submit = () => {
             setVideoFile(null);
             setPoints([]);
             setGlbFile(null);
+            setGlbError(null);
           }}
 
 
@@ -857,7 +877,7 @@ const Submit = () => {
                           type="file"
                           id="glb"
                           accept=".glb"
-                          onChange={(e) => setGlbFile(e.target.files?.[0] || null)}
+                          onChange={handleGlbSelect}
                           className="hidden"
                         />
                         <label htmlFor="glb" className="cursor-pointer">
@@ -874,8 +894,14 @@ const Submit = () => {
                           </div>
                         ) : (
                           <p className="text-sm text-gray-400 mt-2">
-                            Selecione o modelo 3D do íman no formato .glb
+                            Selecione o modelo 3D do íman no formato .glb (máx. 10MB)
                           </p>
+                        )}
+
+                        {glbError && (
+                          <div className="mt-4 p-3 border border-red-300 bg-red-50 text-sm text-red-700 text-left">
+                            {glbError}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -934,7 +960,7 @@ const Submit = () => {
                   <Button
                     type="button"
                     onClick={() => setShowConfirmation(true)}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !glbFile}
                     className="rounded-none uppercase text-xs font-bold tracking-widest bg-neutral-700 text-white hover:bg-neutral-800"
                   >
                     {isSubmitting ? (

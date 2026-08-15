@@ -16,11 +16,17 @@ export interface QRCodeReliefProps {
   reliefHeight?: number;
   baseHeight?: number;
   errorCorrectionLevel?: "L" | "M" | "Q" | "H";
+  /** @deprecated Não é usado — o QR code usa sempre preto/branco padrão para garantir leitura. */
   color?: string;
   onPointerDown?: (e: ThreeEvent<PointerEvent>) => void;
   onPointerOver?: (e: ThreeEvent<PointerEvent>) => void;
   onPointerOut?: (e: ThreeEvent<PointerEvent>) => void;
 }
+
+// Cores padrão de um QR code: módulos escuros a preto, fundo a branco.
+// Fixas de propósito para garantir contraste máximo e leitura fiável.
+const DARK_COLOR = "#000000";
+const LIGHT_COLOR = "#ffffff";
 
 const tempObject = new THREE.Object3D();
 
@@ -31,7 +37,6 @@ export default function QRCodeRelief({
   reliefHeight = 0.02,
   baseHeight = 0.015,
   errorCorrectionLevel = "H",
-  color = "#969292",
   onPointerDown,
   onPointerOver,
   onPointerOut,
@@ -43,16 +48,30 @@ export default function QRCodeRelief({
 
   const moduleCount = matrix.size;
   const moduleSize = size / moduleCount;
-  const instanceCount = moduleCount * moduleCount;
   const bleed = 1.02;
 
-  const meshRef = useRef<THREE.InstancedMesh>(null);
+  // Conta módulos escuros/claros para dimensionar os dois InstancedMesh.
+  const { darkCount, lightCount } = useMemo(() => {
+    let dark = 0;
+    for (let row = 0; row < moduleCount; row++) {
+      for (let col = 0; col < moduleCount; col++) {
+        if (matrix.isDark(row, col)) dark++;
+      }
+    }
+    return { darkCount: dark, lightCount: moduleCount * moduleCount - dark };
+  }, [matrix, moduleCount]);
+
+  const darkMeshRef = useRef<THREE.InstancedMesh>(null);
+  const lightMeshRef = useRef<THREE.InstancedMesh>(null);
 
   useLayoutEffect(() => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
+    const darkMesh = darkMeshRef.current;
+    const lightMesh = lightMeshRef.current;
+    if (!darkMesh || !lightMesh) return;
 
-    let i = 0;
+    let di = 0;
+    let li = 0;
+
     for (let row = 0; row < moduleCount; row++) {
       for (let col = 0; col < moduleCount; col++) {
         const dark = matrix.isDark(row, col);
@@ -66,27 +85,50 @@ export default function QRCodeRelief({
         tempObject.position.set(x, y, z);
         tempObject.scale.set(moduleSize * bleed, moduleSize * bleed, height);
         tempObject.updateMatrix();
-        mesh.setMatrixAt(i, tempObject.matrix);
-        i++;
+
+        if (dark) {
+          darkMesh.setMatrixAt(di, tempObject.matrix);
+          di++;
+        } else {
+          lightMesh.setMatrixAt(li, tempObject.matrix);
+          li++;
+        }
       }
     }
 
-    mesh.instanceMatrix.needsUpdate = true;
-    mesh.computeBoundingSphere();
-  }, [matrix, moduleCount, moduleSize, mode, reliefHeight, baseHeight, bleed]);
+    darkMesh.instanceMatrix.needsUpdate = true;
+    lightMesh.instanceMatrix.needsUpdate = true;
+    darkMesh.computeBoundingSphere();
+    lightMesh.computeBoundingSphere();
+  }, [matrix, moduleCount, moduleSize, mode, reliefHeight, baseHeight, bleed, darkCount, lightCount]);
 
   return (
-    <instancedMesh
-      ref={meshRef}
-      args={[undefined, undefined, instanceCount]}
-      castShadow
-      receiveShadow
+    <group
       onPointerDown={onPointerDown}
       onPointerOver={onPointerOver}
       onPointerOut={onPointerOut}
     >
-      <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial color={color} roughness={0.65} metalness={0.05} />
-    </instancedMesh>
+      <instancedMesh
+        ref={darkMeshRef}
+        args={[undefined, undefined, darkCount]}
+        castShadow={false}
+        receiveShadow={false}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        {/* Preto sólido — MeshBasicMaterial ignora luz da cena, sem sombras nem gradientes. */}
+        <meshBasicMaterial color={DARK_COLOR} toneMapped={false} />
+      </instancedMesh>
+
+      <instancedMesh
+        ref={lightMeshRef}
+        args={[undefined, undefined, lightCount]}
+        castShadow={false}
+        receiveShadow={false}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        {/* Branco sólido — mesmo material base, sem efeitos visuais. */}
+        <meshBasicMaterial color={LIGHT_COLOR} toneMapped={false} />
+      </instancedMesh>
+    </group>
   );
 }

@@ -184,7 +184,7 @@ const Submit = () => {
   const [points, setPoints] = useState<PointOfInterest[]>([]);
   const [isAddingPOI, setIsAddingPOI] = useState(false);
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
-
+  const poiListRef = useRef<HTMLDivElement>(null);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -231,6 +231,12 @@ const Submit = () => {
       (id: string) => points.findIndex((p) => p.id === id),
       [points]
   );
+
+  useEffect(() => {
+    if (selectedPointId && poiListRef.current) {
+      poiListRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [selectedPointId]);
 
 
 
@@ -731,136 +737,138 @@ const Submit = () => {
 
 
                     {isAddingPOI ? (
-                      <>
-                        {displayedPoints.map((point) => {
-                          const originalIndex = getOriginalIndex(point.id);
-                          const isSelected = selectedPointId === point.id;
+                        <AnimatePresence initial={false}>
+                          {displayedPoints.map((point) => {
+                            const originalIndex = getOriginalIndex(point.id);
+                            const isSelected = selectedPointId === point.id;
 
-                          return (
-                          <div
-                          key={point.id}
-                          onClick={() => handleCardClick(point)}
-                          className={`p-4 border ${
-                            isSelected ? "border-black" : "border-gray-200"
-                          } space-y-3 relative cursor-pointer`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold uppercase tracking-widest text-gray-500">
-                              Ponto {originalIndex + 1}
-                            </span>
-                        
-                            <div className="flex items-center gap-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCardClick(point);
-                                }}
-                                className="text-gray-400 hover:text-black h-7 px-2"
-                                title="Ir para este ponto no vídeo"
+                            return (
+                              <motion.div
+                                key={point.id}
+                                layout
+                                initial={{ opacity: 0, y: -8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.97 }}
+                                transition={{ type: "spring", stiffness: 500, damping: 32, mass: 0.6 }}
+                                onClick={() => handleCardClick(point)}
+                                className={`p-4 border ${
+                                  isSelected ? "border-black" : "border-gray-200"
+                                } space-y-3 relative cursor-pointer bg-white`}
                               >
-                                <Crosshair className="w-4 h-4" />
-                              </Button>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-bold uppercase tracking-widest text-gray-500">
+                                    Ponto {originalIndex + 1}
+                                  </span>
 
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  removePoint(point.id);
-                                }}
-                                className="text-gray-400 hover:text-black h-7 px-2"
-                                title="Remover"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleCardClick(point);
+                                      }}
+                                      className="text-gray-400 hover:text-black h-7 px-2"
+                                      title="Ir para este ponto no vídeo"
+                                    >
+                                      <Crosshair className="w-4 h-4" />
+                                    </Button>
 
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <Label>Título</Label>
-                            <Input
-                              value={point.title}
-                              onChange={(e) =>
-                                updatePoint(point.id, "title", e.target.value)
-                              }
-                            />
-                          </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        removePoint(point.id);
+                                      }}
+                                      className="text-gray-400 hover:text-black h-7 px-2"
+                                      title="Remover"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </div>
 
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <Label>Descrição</Label>
-                            <Textarea
-                              rows={2}
-                              value={point.description}
-                              onChange={(e) =>
-                                updatePoint(point.id, "description", e.target.value)
-                              }
-                            />
-                          </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <Label>Início</Label>
-                                <p className="text-sm text-gray-700 mt-1">
-                                  {formatTime(point.timestamp)}
-                                </p>
-                              </div>
-                          
-
-                              {!point.permanent && (
                                 <div onClick={(e) => e.stopPropagation()}>
-                                  <Label htmlFor={`duration-${point.id}`}>
-                                    Duração (segundos)
-                                  </Label>
-
+                                  <Label>Título</Label>
                                   <Input
-                                    id={`duration-${point.id}`}
-                                    type="number"
-                                    min={1}
-                                    step={1}
-                                    value={point.duration}
+                                    value={point.title}
                                     onChange={(e) =>
-                                      updatePoint(
-                                        point.id,
-                                        "duration",
-                                        Math.max(1, Number(e.target.value) || 1)
-                                      )
+                                      updatePoint(point.id, "title", e.target.value)
                                     }
-                                    className="mt-1"
                                   />
                                 </div>
-                              )}
-                              
-                              <div
-                                className="flex items-center gap-2"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <input
-                                  id={`permanent-${point.id}`}
-                                  type="checkbox"
-                                  checked={point.permanent}
-                                  onChange={(e) =>
-                                    updatePoint(point.id, "permanent", e.target.checked)
-                                  }
-                                />
 
-                                <Label
-                                  htmlFor={`permanent-${point.id}`}
-                                  className="cursor-pointer"
-                                >
-                                  Mostrar durante todo o vídeo
-                                </Label>
-                              </div>
+                                <div onClick={(e) => e.stopPropagation()}>
+                                  <Label>Descrição</Label>
+                                  <Textarea
+                                    rows={2}
+                                    value={point.description}
+                                    onChange={(e) =>
+                                      updatePoint(point.id, "description", e.target.value)
+                                    }
+                                  />
+                                </div>
 
-                            </div>   
-                          </div>
-                          );
-                        })}
-                      </>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <Label>Início</Label>
+                                    <p className="text-sm text-gray-700 mt-1">
+                                      {formatTime(point.timestamp)}
+                                    </p>
+                                  </div>
 
+                                  {!point.permanent && (
+                                    <div onClick={(e) => e.stopPropagation()}>
+                                      <Label htmlFor={`duration-${point.id}`}>
+                                        Duração (segundos)
+                                      </Label>
+
+                                      <Input
+                                        id={`duration-${point.id}`}
+                                        type="number"
+                                        min={1}
+                                        step={1}
+                                        value={point.duration}
+                                        onChange={(e) =>
+                                          updatePoint(
+                                            point.id,
+                                            "duration",
+                                            Math.max(1, Number(e.target.value) || 1)
+                                          )
+                                        }
+                                        className="mt-1"
+                                      />
+                                    </div>
+                                  )}
+
+                                  <div
+                                    className="flex items-center gap-2"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <input
+                                      id={`permanent-${point.id}`}
+                                      type="checkbox"
+                                      checked={point.permanent}
+                                      onChange={(e) =>
+                                        updatePoint(point.id, "permanent", e.target.checked)
+                                      }
+                                    />
+
+                                    <Label
+                                      htmlFor={`permanent-${point.id}`}
+                                      className="cursor-pointer"
+                                    >
+                                      Mostrar durante todo o vídeo
+                                    </Label>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            );
+                          })}
+                        </AnimatePresence>
                     ) : (
 
                       <div className="space-y-3">

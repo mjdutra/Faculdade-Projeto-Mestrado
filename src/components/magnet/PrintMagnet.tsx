@@ -21,7 +21,8 @@ interface Props {
 }
 
 const APP_URL =
-  (import.meta.env.VITE_APP_URL as string | undefined) || window.location.origin;
+  (import.meta.env.VITE_APP_URL as string | undefined)?.replace(/\/$/, "") ||
+  `${window.location.origin}${import.meta.env.BASE_URL}`.replace(/\/$/, "");
 
 export default function PrintMagnet({ magnet, open, onClose }: Props) {
   const [decal, setDecal] = useState<DecalState | null>(null);

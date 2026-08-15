@@ -13,7 +13,7 @@ const Scan = () => {
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const qrScanner = useRef<Html5Qrcode | null>(null);
-
+  const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
   const [existingIds, setExistingIds] = useState<string[]>([]);
   const [manualValue, setManualValue] = useState("");
@@ -71,7 +71,7 @@ useEffect(() => {
 
           setIsScanning(false);
 
-          window.location.href = `/?magnet=${decodedText}`;
+          window.location.href = `${BASE}/?magnet=${decodedText}`;
         },
         () => {}
       );
@@ -123,7 +123,7 @@ const startScanning = () => {
     setIsSuccess(true);
 
     setTimeout(() => {
-      window.location.href = `/?magnet=${encodeURIComponent(magnetId)}`;
+      window.location.href = `${BASE}/?magnet=${encodeURIComponent(magnetId)}`;
     }, 1000);
   };
 

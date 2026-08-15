@@ -28,6 +28,7 @@ interface Video360ViewerProps {
   videoUrl: string;
   points: PointOfInterest[];
   isAddingPOI?: boolean;
+  selectedPointId?: string | null;
   onTimeUpdate?: (time: number) => void;
   onDurationChange?: (duration: number) => void;
   onPlayingChange?: (isPlaying: boolean) => void;
@@ -36,6 +37,7 @@ interface Video360ViewerProps {
   onPositionClick?: (position: { yaw: number; pitch: number }) => void;
   onPointDrag?: (id: string, position: { yaw: number; pitch: number }) => void;
   onPointDragEnd?: (id: string, position: { yaw: number; pitch: number }) => void;
+  onSelectPoint?: (id: string | null) => void;
 }
 
 interface CameraControllerHandle {
@@ -233,8 +235,6 @@ function Sphere({
     onPositionClick(vectorToYawPitch(event.point));
   };
 
-  // Termina o arrasto de um hotspot em qualquer pointerup global — mesmo
-  // que o cursor já não esteja sobre a esfera nesse momento.
   useEffect(() => {
     if (!draggingPointId) return;
     const handleGlobalUp = () => onHotspotDragEnd?.(draggingPointId);
@@ -346,6 +346,7 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
     videoUrl,
     points,
     isAddingPOI = false,
+    selectedPointId: selectedPointIdProp,
     onTimeUpdate,
     onDurationChange,
     onPlayingChange,
@@ -354,6 +355,7 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
     onPositionClick,
     onPointDrag,
     onPointDragEnd,
+    onSelectPoint,
   },
   ref
 ) {
@@ -361,15 +363,14 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
   const cameraControllerRef = useRef<CameraControllerHandle>(null);
   const [hoveredHotspotId, setHoveredHotspotId] = useState<string | null>(null);
-  const [selectedHotspotId, setSelectedHotspotId] = useState<string | null>(null);
+  const [internalSelectedId, setInternalSelectedId] = useState<string | null>(null);
+  const isSelectionControlled = selectedPointIdProp !== undefined;
+  const selectedHotspotId = isSelectionControlled ? selectedPointIdProp : internalSelectedId;
   const [draggingPointId, setDraggingPointId] = useState<string | null>(null);
   const lastDragPositionRef = useRef<{ yaw: number; pitch: number } | null>(null);
   const [offscreenIndicators, setOffscreenIndicators] = useState<IndicatorState[]>([]);
   const [isVRAvailable, setIsVRAvailable] = useState(false);
   const [isInVR, setIsInVR] = useState(false);
-
-  // Verdadeiro quando o utilizador pausou intencionalmente (botão de pausa),
-  // para o hover num POI não retomar a reprodução sem ele querer.
   const manuallyPausedRef = useRef(false);
 
 
@@ -495,7 +496,8 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
     v.play().catch(() => {});
     manuallyPausedRef.current = false;
 
-    setSelectedHotspotId(null);
+    setInternalSelectedId(null);
+    onSelectPoint?.(null);
     setHoveredHotspotId(null);
     setOffscreenIndicators([]);
 
@@ -647,9 +649,19 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
     });
   }, []);
 
-  const handleSelectChange = useCallback((id: string) => {     
-    setSelectedHotspotId((prev) => (prev === id ? null : id));   
-  }, []);
+  const handleSelectChange = useCallback(
+    (id: string) => {
+      if (onSelectPoint) {
+        onSelectPoint(id);
+      }
+
+      if (!isSelectionControlled) {
+        setInternalSelectedId((prev) => (prev === id ? null : id));
+      }
+    },
+    [isSelectionControlled, onSelectPoint]
+  );
+
 
   // Arrasto de hotspot
   const handleHotspotDragStart = useCallback((id: string) => {

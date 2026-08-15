@@ -86,7 +86,6 @@ export function Hotspot({
       }}
       onPointerDown={(e) => {
         e.stopPropagation();
-        if (isAddingPOI) return; 
 
         const startX = e.clientX;
         const startY = e.clientY;
@@ -107,7 +106,6 @@ export function Hotspot({
           window.removeEventListener("pointermove", handleWindowMove);
           window.removeEventListener("pointerup", handleWindowUp);
           if (!dragStarted) {
-            // Não houve arrasto suficiente → foi um clique simples: seleciona.
             onSelectChange?.(point.id);
           }
         };

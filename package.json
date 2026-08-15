@@ -66,6 +66,7 @@
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.3.0",
     "firebase": "^12.16.0",
+    "framer-motion": "^13.1.0",
     "html5-qrcode": "^2.3.8",
     "input-otp": "^1.2.4",
     "lucide-react": "^0.462.0",

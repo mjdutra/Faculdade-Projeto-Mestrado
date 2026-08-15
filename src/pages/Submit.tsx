@@ -15,6 +15,7 @@ import { MapPin, Video, Star, Box, Calendar, ChevronRight, ChevronLeft, Trash2, 
 import { PointOfInterest } from "@/components/poi/PointOfInterest";
 import { compressVideoUnderLimit, resetFFmpeg } from "@/lib/ffmpegClient";
 import { useAuth } from "@/firebase/AuthContext";
+import { motion, AnimatePresence } from "framer-motion";
 
 const STEPS = [
   { id: 1, label: "Informação"},
@@ -182,19 +183,54 @@ const Submit = () => {
   // Step 3 – Points of interest ----------------------------------------------------------------------
   const [points, setPoints] = useState<PointOfInterest[]>([]);
   const [isAddingPOI, setIsAddingPOI] = useState(false);
-
+  const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
 
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
-  
+    
     return `${m.toString().padStart(2,"0")}:${s
       .toString()
       .padStart(2,"0")}`;
   };
 
+  //seleção dos cartões
+  const selectPoint = useCallback((id: string | null) => {
+      if (id === null) {
+        setSelectedPointId(null);
+        return;
+      }
+      setSelectedPointId((prev) => (prev === id ? null : id));
+    }, []);
 
+    const handleCardClick = useCallback(
+      (point: PointOfInterest) => {
+        const willSelect = selectedPointId !== point.id;
+        selectPoint(point.id);
+
+        if (willSelect) {
+          viewerRef.current?.seek(point.timestamp);
+          viewerRef.current?.lookAt(point.yaw, point.pitch);
+          viewerRef.current?.pause();
+        }
+      },
+      [selectedPointId, selectPoint]
+    );
+
+    // Reordena
+    const displayedPoints = useMemo(() => {
+      if (!selectedPointId) return points;
+      const idx = points.findIndex((p) => p.id === selectedPointId);
+      if (idx === -1) return points;
+      return [points[idx], ...points.slice(0, idx), ...points.slice(idx + 1)];
+    }, [points, selectedPointId]);
+
+    // "Ponto N" nunca muda.
+    const getOriginalIndex = useCallback(
+      (id: string) => points.findIndex((p) => p.id === id),
+      [points]
+  );
 
 
 
@@ -436,6 +472,8 @@ const Submit = () => {
                           points={points}
                           videoUrl={videoObjectUrl}
                           isAddingPOI={isAddingPOI}
+                          selectedPointId={selectedPointId}
+                          onSelectPoint={selectPoint}
                           onPositionClick={(position) => {
                             const newPoint: PointOfInterest = {
                               id: Date.now().toString(),
@@ -685,7 +723,7 @@ const Submit = () => {
                         }
                       `}
                     >
-                      {isAddingPOI ? "Back" : "+ Adicionar Ponto de Interesse"}
+                      {isAddingPOI ? "- Sair do modo de criação" : "+ Adicionar Ponto de Interesse"}
                     </Button>
 
 
@@ -694,15 +732,21 @@ const Submit = () => {
 
                     {isAddingPOI ? (
                       <>
-                        {points.map((point, index) => (
+                        {displayedPoints.map((point) => {
+                          const originalIndex = getOriginalIndex(point.id);
+                          const isSelected = selectedPointId === point.id;
+
+                          return (
                           <div
                           key={point.id}
-
-                          className="p-4 border border-gray-200 space-y-3 relative"
+                          onClick={() => handleCardClick(point)}
+                          className={`p-4 border ${
+                            isSelected ? "border-black" : "border-gray-200"
+                          } space-y-3 relative cursor-pointer`}
                         >
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold uppercase tracking-widest text-gray-500">
-                              Ponto {index + 1}
+                              Ponto {originalIndex + 1}
                             </span>
                         
                             <div className="flex items-center gap-1">
@@ -710,9 +754,9 @@ const Submit = () => {
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => {
-                                  viewerRef.current?.seek(point.timestamp);
-                                  viewerRef.current?.lookAt(point.yaw, point.pitch);
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCardClick(point);
                                 }}
                                 className="text-gray-400 hover:text-black h-7 px-2"
                                 title="Ir para este ponto no vídeo"
@@ -724,7 +768,10 @@ const Submit = () => {
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => removePoint(point.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removePoint(point.id);
+                                }}
                                 className="text-gray-400 hover:text-black h-7 px-2"
                                 title="Remover"
                               >
@@ -733,7 +780,7 @@ const Submit = () => {
                             </div>
                           </div>
 
-                          <div>
+                          <div onClick={(e) => e.stopPropagation()}>
                             <Label>Título</Label>
                             <Input
                               value={point.title}
@@ -743,7 +790,7 @@ const Submit = () => {
                             />
                           </div>
 
-                          <div>
+                          <div onClick={(e) => e.stopPropagation()}>
                             <Label>Descrição</Label>
                             <Textarea
                               rows={2}
@@ -764,7 +811,7 @@ const Submit = () => {
                           
 
                               {!point.permanent && (
-                                <div>
+                                <div onClick={(e) => e.stopPropagation()}>
                                   <Label htmlFor={`duration-${point.id}`}>
                                     Duração (segundos)
                                   </Label>
@@ -787,7 +834,10 @@ const Submit = () => {
                                 </div>
                               )}
                               
-                              <div className="flex items-center gap-2">
+                              <div
+                                className="flex items-center gap-2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <input
                                   id={`permanent-${point.id}`}
                                   type="checkbox"
@@ -807,10 +857,11 @@ const Submit = () => {
 
                             </div>   
                           </div>
-                        ))}
+                          );
+                        })}
                       </>
 
-                      ) : (
+                    ) : (
 
                       <div className="space-y-3">
 
@@ -820,18 +871,21 @@ const Submit = () => {
                           </div>
                         )}
 
-                        {points.map((point, index) => (
+                        {displayedPoints.map((point) => {
+                          const originalIndex = getOriginalIndex(point.id);
+                          const isSelected = selectedPointId === point.id;
+
+                          return (
                           <div
                             key={point.id}
-                            onClick={() => {
-                              viewerRef.current?.seek(point.timestamp);
-                              viewerRef.current?.lookAt(point.yaw, point.pitch);
-                            }}
-                            className="border border-gray-200 p-4 flex justify-between items-center hover:bg-gray-50 transition cursor-pointer"
+                            onClick={() => handleCardClick(point)}
+                            className={`border ${
+                              isSelected ? "border-black" : "border-gray-200"
+                            } p-4 flex justify-between items-center hover:bg-gray-50 transition cursor-pointer`}
                           >
                             <div>
                               <h3 className="font-semibold">
-                                {point.title || `Ponto ${index + 1}`}
+                                {point.title || `Ponto ${originalIndex + 1}`}
                               </h3>
 
                               <p className="text-sm text-gray-500">
@@ -856,7 +910,8 @@ const Submit = () => {
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                       )}
                   </div>

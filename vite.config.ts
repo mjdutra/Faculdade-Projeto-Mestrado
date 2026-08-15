@@ -1,5 +1,4 @@
 import { defineConfig } from "vite";
-// import dyadComponentTagger from "@dyad-sh/react-vite-component-tagger";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 

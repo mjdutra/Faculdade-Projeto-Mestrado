@@ -67,13 +67,23 @@ useEffect(() => {
         async (decodedText) => {
           setScanResult(decodedText);
           setIsSuccess(true);
-
-          await qrScanner.current?.stop();
-          await qrScanner.current?.clear();
-
           setIsScanning(false);
 
-          window.location.href = `${BASE}/?magnet=${decodedText}`;
+          try {
+            await qrScanner.current?.stop();
+            await qrScanner.current?.clear();
+          } catch (err) {
+            console.error("Erro ao parar o scanner:", err);
+          }
+
+          let magnetId = decodedText.trim();
+          try {
+            const parsed = new URL(decodedText);
+            magnetId = parsed.searchParams.get("magnet") ?? magnetId;
+          } catch {
+          }
+
+          window.location.href = `${BASE}/?magnet=${encodeURIComponent(magnetId)}`;
         },
         () => {}
       );

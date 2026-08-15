@@ -23,8 +23,6 @@ interface Props {
 }
 
 const SURFACE_OFFSET = 0.01;
-
-// Dimensão visual comum para todos os magnets.
 const TARGET_MODEL_SIZE = 3;
 
 export default function MagnetPrintScene({
@@ -45,15 +43,7 @@ export default function MagnetPrintScene({
   const isDragging = useRef(false);
   const [orbitEnabled, setOrbitEnabled] = useState(true);
 
-  /**
-   * Normaliza o GLB:
-   * - calcula o bounding box real
-   * - centra o modelo no origem
-   * - escala o maior eixo para TARGET_MODEL_SIZE
-   *
-   * Assim, GLBs com dimensões originais diferentes aparecem
-   * exactamente com a mesma dimensão visual.
-   */
+
   const normalizedScale = useMemo(() => {
     const box = new THREE.Box3().setFromObject(clonedScene);
 

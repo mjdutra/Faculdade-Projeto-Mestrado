@@ -8,7 +8,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/config"; 
 
-  const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const Scan = () => {
   const [isScanning, setIsScanning] = useState(false);

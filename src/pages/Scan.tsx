@@ -8,12 +8,14 @@ import { Html5Qrcode } from "html5-qrcode";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/config"; 
 
+  const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 const Scan = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const qrScanner = useRef<Html5Qrcode | null>(null);
-  const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 
   const [existingIds, setExistingIds] = useState<string[]>([]);
   const [manualValue, setManualValue] = useState("");

@@ -18,7 +18,7 @@ const AV_HEIGHT = 0.5;
 const SIDE_GAP = 0.5; 
 const VERTICAL_LIFT = 0.1; 
 const FOLLOW_LERP = 0.2; 
-const PANEL_RENDER_ORDER = 20; // fundo do painel
+const PANEL_RENDER_ORDER = 20; 
 const CONTENT_RENDER_ORDER = PANEL_RENDER_ORDER + 1; 
 const OVERLAY_RENDER_ORDER = PANEL_RENDER_ORDER + 2; 
 

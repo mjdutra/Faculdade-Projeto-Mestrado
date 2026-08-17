@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Html} from "@react-three/drei";
+import { Billboard, Html, Text } from "@react-three/drei";
 import { useXR } from "@react-three/xr";
 import * as THREE from "three";
 import { PointOfInterest } from "./PointOfInterest";
@@ -27,19 +27,37 @@ const PULSE_SPEED = 3;
 const PULSE_AMOUNT = 0.12;
 const DRAG_THRESHOLD = 6;
 
+// Etiqueta permanente com o título encurtado do POI.
+const LABEL_MAX_LENGTH = 18;
+const LABEL_LERP_FACTOR = 0.18;
+
+function shortenTitle(title: string) {
+  const clean = title?.trim() || "Ponto de Interesse";
+  return clean.length > LABEL_MAX_LENGTH
+    ? `${clean.slice(0, LABEL_MAX_LENGTH - 1)}…`
+    : clean;
+}
+
 export function Hotspot({ 
   point, position, video, isAddingPOI, onHoverChange, isSelected = false, isDragging = false, onSelectChange, onDragStart
 }: HotspotProps) {
   const meshRef = useRef<THREE.Mesh>(null);
+  const labelTextRef = useRef<any>(null);
   const [hovered, setHovered] = useState(false);
+  const [active, setActive] = useState(true);
   const inVR = useXR((state) => state.mode === "immersive-vr");
 
-  useFrame(({ clock }) => {
+  const highlighted = hovered || isSelected || isDragging;
+  const showContent = (hovered || isSelected) && !isDragging;
+
+  useFrame(({ clock }, delta) => {
     const mesh = meshRef.current;
     if (!mesh) return;
 
     const isVisible = isPointActive(point, video.currentTime);
     mesh.visible = isVisible;
+
+    if (isVisible !== active) setActive(isVisible);
 
     if (!isVisible) {
       if (hovered) { setHovered(false); onHoverChange?.(point.id, false); }
@@ -52,6 +70,17 @@ export function Hotspot({
       mesh.scale.setScalar(pulse);
     } else {
       mesh.scale.setScalar(1);
+    }
+
+  
+    if (labelTextRef.current) {
+      const target = showContent ? 0 : 1;
+      const current = labelTextRef.current.fillOpacity ?? 1;
+      labelTextRef.current.fillOpacity = THREE.MathUtils.lerp(
+        current,
+        target,
+        LABEL_LERP_FACTOR
+      );
     }
   });
 
@@ -66,8 +95,7 @@ export function Hotspot({
     ? (inVR ? HOVER_RADIUS.vr : HOVER_RADIUS.desktop)
     : (inVR ? BASE_RADIUS.vr : BASE_RADIUS.desktop);
 
-  const highlighted = hovered || isSelected || isDragging;
-  const showContent = (hovered || isSelected) && !isDragging;
+  const shortTitle = shortenTitle(point.title);
 
   return (
     <mesh
@@ -117,16 +145,62 @@ export function Hotspot({
       <sphereGeometry args={[radius, 16, 16]} />
       <meshBasicMaterial color={highlighted ? "#ffffff" : "#ff0000"} />
 
-      {showContent && !inVR && (
-        <Html center style={{ pointerEvents: "none", transform: "translate(5%, -50%)" }}>
-          <HotspotTooltip point={point} />
-        </Html>
+      {active && !inVR && (
+        <>
+          {/* título encurtado */}
+          <Html
+            center
+            style={{
+              pointerEvents: "none",
+              transform: "translate(10%, -55%)",
+              opacity: showContent ? 0 : 1,
+              transition: "opacity 200ms ease",
+            }}
+          >
+            <span className="px-2 py-1 bg-black/30 text-white text-[10px] font-bold uppercase tracking-widest whitespace-nowrap rounded-sm">
+              {shortTitle}
+            </span>
+          </Html>
+
+          {/* Painel visível em hover*/}
+          <Html
+            center
+            style={{
+              pointerEvents: "none",
+              transform: "translate(5%, -50%)",
+              opacity: showContent ? 1 : 0,
+              transition: "opacity 200ms ease",
+            }}
+          >
+            <HotspotTooltip point={point} />
+          </Html>
+        </>
       )}
 
-      {showContent && inVR && (
-        <HotspotVR 
-          point={point} 
-          radius={radius} />
+      {active && inVR && (
+        <>
+          {/* título encurtado */}
+          <Billboard position={[0, radius + 0.35, 0]}>
+            <Text
+              ref={labelTextRef}
+              fontSize={0.16}
+              color="#ffffff"
+              outlineWidth={0.01}
+              outlineColor="#000000"
+              anchorX="center"
+              anchorY="middle"
+              raycast={() => null}
+            >
+              {shortTitle}
+            </Text>
+          </Billboard>
+
+          {showContent && (
+            <HotspotVR 
+              point={point} 
+              radius={radius} />
+          )}
+        </>
       )}
     </mesh>
   );

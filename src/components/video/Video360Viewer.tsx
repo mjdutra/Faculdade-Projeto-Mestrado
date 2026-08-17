@@ -487,7 +487,7 @@ const Video360Viewer = forwardRef<Video360ViewerHandle, Video360ViewerProps>(fun
     v.src = videoUrl;
     v.crossOrigin = "anonymous";
     v.loop = true;
-    v.muted = true;
+    v.muted = false;
     v.playsInline = true;
     v.autoplay = true;
 

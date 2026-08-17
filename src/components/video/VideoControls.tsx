@@ -54,7 +54,6 @@ export default function VideoControls({
   const progressRef = useRef<HTMLDivElement>(null);
   const isSeekingRef = useRef(false);
 
-  // Id do marcador atualmente a ser arrastado (null se nenhum).
   const draggingMarkerIdRef = useRef<string | null>(null);
   // Distingue clique de arrasto
   const markerDraggedRef = useRef(false);

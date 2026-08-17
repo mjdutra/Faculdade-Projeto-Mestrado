@@ -16,6 +16,7 @@ import { PointOfInterest } from "@/components/poi/PointOfInterest";
 import { compressVideoUnderLimit, resetFFmpeg } from "@/lib/ffmpegClient";
 import { useAuth } from "@/firebase/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
+import { MagnetViewer } from "@/components/magnet/MagnetViewer";
 
 const STEPS = [
   { id: 1, label: "Informação"},
@@ -244,6 +245,18 @@ const Submit = () => {
   const [glbFile, setGlbFile] = useState<File | null>(null);
   const [glbError, setGlbError] = useState<string | null>(null);
   const MAX_GLB_SIZE = 10 * 1024 * 1024; // 10MB
+
+  const glbObjectUrl = useMemo(() => {
+    if (!glbFile) return null;
+    return URL.createObjectURL(glbFile);
+  }, [glbFile]);
+
+  useEffect(() => {
+    return () => {
+      if (glbObjectUrl) URL.revokeObjectURL(glbObjectUrl);
+    };
+  }, [glbObjectUrl]);
+
 
   const handleGlbSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
@@ -933,9 +946,14 @@ const Submit = () => {
                 {currentStep === 4 && (
                   <div className="space-y-4">
                     <div>
-                      <Label>Ficheiro do Íman (.glb)</Label>
-                      <div className="mt-1 border-2 border-dashed border-gray-200 p-8 text-center hover:border-black transition-colors">
-                        <Box className="w-14 h-14 mx-auto mb-4 text-gray-300" />
+                        <div className="mt-1 border-2 border-dashed border-gray-200 p-8 text-center hover:border-black transition-colors">
+                          {glbFile && glbObjectUrl ? (
+                            <div className="w-32 h-32 mx-auto mb-4">
+                              <MagnetViewer modelUrl={glbObjectUrl} showRotateButton={false} />
+                            </div>
+                          ) : (
+                            <Box className="w-14 h-14 mx-auto mb-4 text-gray-300" />
+                          )}
                         <input
                           type="file"
                           id="glb"
@@ -945,9 +963,10 @@ const Submit = () => {
                         />
                         <label htmlFor="glb" className="cursor-pointer">
                           <Button variant="outline" asChild>
-                            <span>Escolher Ficheiro .glb</span>
+                            <span>Escolher ficheiro .glb</span>
                           </Button>
                         </label>
+
                         {glbFile ? (
                           <div className="mt-4 p-3 bg-gray-50 rounded-lg text-sm text-gray-700">
                             <span className="font-medium">{glbFile.name}</span>

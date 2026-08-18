@@ -16,7 +16,7 @@ const PROJECT_TITLE = "MAGNET";
 
 // ── Tamanho dos magnets ─────────────────────────────────────────────────
 const MAGNET_SIZE = 400; // desktop
-const MOBILE_MAGNET_SIZE = 260; // mobile — ajusta para mudar o tamanho no telemóvel
+const MOBILE_MAGNET_SIZE = 260; // mobile 
 
 const CLICK_DRAG_THRESHOLD = 6;
 const MAX_TILT_DEG = 10;
@@ -26,7 +26,7 @@ const COLLISION_RATIO = 0.55;
 const COLLISION_STRENGTH = 0.12;
 const MAX_PUSH_PER_FRAME = 4;
 
-const MIN_DISTANCE = 28; // desktop — distância mínima entre magnets ao nascerem
+const MIN_DISTANCE = 20; // desktop
 const MOBILE_MIN_DISTANCE = 16; // mobile
 
 const MAGNETS_PER_ROW = 4;
@@ -35,17 +35,11 @@ const ROW_HEIGHT = 500;
 // ── Responsividade ──────────────────────────────────────────────────────
 const MOBILE_BREAKPOINT = 768;
 
-// Margem extra (px) para além de metade da largura do magnet, para nunca
-// tocar exatamente no limite do ecrã.
+// Margem extra 
 const EDGE_BUFFER_PX = 8;
-// Limite de segurança para a margem horizontal (%) — evita inverter os
-// limites em ecrãs extremamente estreitos.
+// Limite de segurança para a margem horizontal
 const MAX_HORIZONTAL_MARGIN_PERCENT = 45;
 
-// Limites verticais — controlam apenas a "zona" onde os magnets podem
-// nascer/mover-se dentro do contentor. O contentor em si cresce para
-// baixo conforme o número de magnets, o que já garante que só se
-// expande verticalmente (nunca lateralmente).
 const DESKTOP_SPAWN_Y = { yMin: 8, yMax: 92 };
 const MOBILE_SPAWN_Y = { yMin: 62, yMax: 90 };
 const DESKTOP_CLAMP_Y = { yMin: 4, yMax: 96 };
@@ -56,9 +50,7 @@ const getVerticalBounds = (isMobile: boolean, mode: "spawn" | "clamp") => {
   return isMobile ? MOBILE_CLAMP_Y : DESKTOP_CLAMP_Y;
 };
 
-// Margem horizontal (%), calculada a partir da largura REAL do contentor
-// e do tamanho do magnet — garante que o magnet nunca ultrapassa a
-// margem esquerda/direita do ecrã, seja qual for a largura da janela.
+// Margem horizontal (
 const getHorizontalMargin = (containerWidth: number, magnetSize: number) => {
   if (!containerWidth) return 0;
   const marginPx = magnetSize / 2 + EDGE_BUFFER_PX;
@@ -238,9 +230,7 @@ const Homepage = () => {
     });
   }, [magnets, isMobile, magnetSize, containerWidth]);
 
-  // Sempre que a largura do contentor ou o tamanho do magnet mudam
-  // (redimensionar janela, rodar o telemóvel, mudar de mobile↔desktop),
-  // reajusta as posições já existentes para dentro dos novos limites.
+
   useEffect(() => {
     if (!containerWidth) return;
 
@@ -284,9 +274,7 @@ const Homepage = () => {
     fetchMagnets();
   }, []);
 
-  // NOTA: este efeito é código morto — quando corre, o efeito de spawn
-  // acima já atribuiu posição a todos os magnets, pelo que a condição
-  // `!next[magnet.id]` nunca é verdadeira. Mantido tal como estava.
+
   useEffect(() => {
     setPositions((prev) => {
       const next = { ...prev };
@@ -337,6 +325,7 @@ const Homepage = () => {
       { replace: true }
     );
   }, [setSearchParams]);
+  
   // ───────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -448,7 +437,6 @@ const Homepage = () => {
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
-      // se ainda houver um toque com o mesmo id ativo, ainda não acabou
       const touchId = activeTouchIdRef.current;
       for (let i = 0; i < e.touches.length; i++) {
         if (e.touches[i].identifier === touchId) return;
@@ -475,6 +463,9 @@ const Homepage = () => {
       window.removeEventListener("touchcancel", handleTouchEnd);
     };
   }, [draggingId, openMagnet, magnetSize]);
+
+
+
 
   useEffect(() => {
     let frameId: number;

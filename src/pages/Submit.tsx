@@ -86,7 +86,7 @@ const Submit = () => {
 
   const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0] || null;
-      e.target.value = ""; // permite reselecionar o mesmo ficheiro depois
+      e.target.value = "";
 
       if (!file) return;
 
@@ -260,7 +260,7 @@ const Submit = () => {
 
   const handleGlbSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    e.target.value = ""; // permite reselecionar o mesmo ficheiro depois
+    e.target.value = ""; 
 
     if (!file) return;
 

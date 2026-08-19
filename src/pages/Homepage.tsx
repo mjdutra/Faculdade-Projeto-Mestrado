@@ -152,12 +152,23 @@ const getRandomPosition = (
 const Homepage = () => {
   const [magnets, setMagnets] = useState<Magnet[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showLoadingScreen, setShowLoadingScreen] = useState(true);
+  
 
+  //Loading -----------------------------------------
+  const [showLoadingScreen, setShowLoadingScreen] = useState(false);
+  useEffect(() => {
+  const hasLoadedBefore = sessionStorage.getItem("magnets-loaded");
+    if (!hasLoadedBefore) {
+      setShowLoadingScreen(true);
+    }
+  }, []);
   const handleLoadingScreenFinished = useCallback(() => {
-      setShowLoadingScreen(false);
-    }, []);
+    sessionStorage.setItem("magnets-loaded", "true");
+    setShowLoadingScreen(false);
+  }, []);
 
+
+  
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [modelHoverId, setModelHoverId] = useState<string | null>(null);

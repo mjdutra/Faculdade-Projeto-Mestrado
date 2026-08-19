@@ -11,10 +11,11 @@ import { shortenLocation } from "@/lib/locationshort";
 import TopNav from "@/components/TopNav";
 import MagnetPage from "@/components/magnet/MagnetPage";
 import type { Magnet } from "@/types/magnet";
+import LoadingScreen from "@/components/loading/LoadingScreen";
 
 const PROJECT_TITLE = "MAGNET";
 
-// ── Tamanho dos magnets ─────────────────────────────────────────────────
+// ── Tamanho dos magnets 
 const MAGNET_SIZE = 400; // desktop
 const MOBILE_MAGNET_SIZE = 260; // mobile 
 
@@ -32,13 +33,13 @@ const MOBILE_MIN_DISTANCE = 16; // mobile
 const MAGNETS_PER_ROW = 4;
 const ROW_HEIGHT = 500;
 
-// ── Responsividade ──────────────────────────────────────────────────────
+
 const MOBILE_BREAKPOINT = 768;
 
 // Margem extra 
 const EDGE_BUFFER_PX = 8;
 // Limite de segurança para a margem horizontal
-const MAX_HORIZONTAL_MARGIN_PERCENT = 45;
+const MAX_HORIZONTAL_MARGIN_PERCENT = 20;
 
 const DESKTOP_SPAWN_Y = { yMin: 8, yMax: 92 };
 const MOBILE_SPAWN_Y = { yMin: 62, yMax: 90 };
@@ -93,7 +94,7 @@ function useIsMobile(breakpoint = MOBILE_BREAKPOINT) {
 
   return isMobile;
 }
-// ─────────────────────────────────────────────────────────────────────────
+// ------------------------------------------
 
 interface Position {
   xPercent: number;
@@ -151,6 +152,11 @@ const getRandomPosition = (
 const Homepage = () => {
   const [magnets, setMagnets] = useState<Magnet[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showLoadingScreen, setShowLoadingScreen] = useState(true);
+
+  const handleLoadingScreenFinished = useCallback(() => {
+      setShowLoadingScreen(false);
+    }, []);
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -326,7 +332,9 @@ const Homepage = () => {
     );
   }, [setSearchParams]);
   
-  // ───────────────────────────────────────────────────────────────────────
+
+
+  // ---------------------------------------------------------------------------------
 
   useEffect(() => {
     if (!draggingId) return;
@@ -717,6 +725,15 @@ const Homepage = () => {
         onClose={closeMagnet}
         onDeleted={handleMagnetDeleted}
       />
+      
+      {showLoadingScreen && (
+        <LoadingScreen
+          magnets={magnets}
+          magnetsFetched={!loading}
+          onFinished={handleLoadingScreenFinished}
+        />
+      )}
+
     </div>
   );
 };

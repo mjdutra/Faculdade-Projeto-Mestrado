@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useFrame, useThree, ThreeEvent } from "@react-three/fiber";
-import { Billboard, Text, useTexture} from "@react-three/drei";
+import { Billboard, Text, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { PointOfInterest, POIMedia } from "./PointOfInterest";
 
@@ -13,15 +13,12 @@ const IMAGE_HEIGHT = 1.4;
 const AV_HEIGHT = 0.5;
 
 
-const READ_DISTANCE = 1.8; // distância de leitura em VR
-const SIDE_OFFSET = 0.55; // deslocamento lateral
-const VERTICAL_LIFT = 0.2; // deslocamento vertical
-const FOLLOW_LERP = 0.15; // suavização do acompanhamento
-const PANEL_RENDER_ORDER = 20;
-const CONTENT_RENDER_ORDER = PANEL_RENDER_ORDER + 1;
-const OVERLAY_RENDER_ORDER = PANEL_RENDER_ORDER + 2;
-const LEADER_LINE_RENDER_ORDER = PANEL_RENDER_ORDER - 1;
-const LEADER_LINE_COLOR = "#ffffff";
+const SIDE_GAP = 0.5; 
+const VERTICAL_LIFT = 0.1; 
+const FOLLOW_LERP = 0.2; 
+const PANEL_RENDER_ORDER = 20; 
+const CONTENT_RENDER_ORDER = PANEL_RENDER_ORDER + 1; 
+const OVERLAY_RENDER_ORDER = PANEL_RENDER_ORDER + 2; 
 
 interface Block {
   type: "title" | "description" | "media";
@@ -168,9 +165,6 @@ function VideoBlock({ media, y }: { media: POIMedia; y: number }) {
 
   const contentWidth = WIDTH - PADDING * 2;
   const height = AV_HEIGHT * 2.2;
-  
-  
-
 
   return (
     <group position={[0, y, 0.01]} onClick={toggle} pointerEventsType={{ deny: "grab" }}>
@@ -207,153 +201,100 @@ export function HotspotVR({ point, radius }: HotspotVRProps) {
   const { blocks, totalHeight } = useMemo(() => buildLayout(point), [point]);
   const { camera } = useThree();
 
+
   const anchorRef = useRef<THREE.Group>(null);
-
-  const [leaderLine] = useState(() => {
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(6), 3));
-    const material = new THREE.LineBasicMaterial({
-      color: LEADER_LINE_COLOR,
-      transparent: true,
-      opacity: 0.5,
-      depthTest: false,
-      depthWrite: false,
-    });
-    const line = new THREE.Line(geometry, material);
-    line.frustumCulled = false;
-    line.renderOrder = LEADER_LINE_RENDER_ORDER;
-    return line;
-  });
-
-  useEffect(() => {
-    return () => {
-      leaderLine.geometry.dispose();
-      (leaderLine.material as THREE.Material).dispose();
-    };
-  }, [leaderLine]);
-
-  // Vetores reutilizados entre frames para evitar alocações.
-  const markerWorldPos = useRef(new THREE.Vector3());
-  const camWorldPos = useRef(new THREE.Vector3());
-  const dirToMarker = useRef(new THREE.Vector3());
+  const targetVec = useRef(new THREE.Vector3());
   const rightVec = useRef(new THREE.Vector3());
   const upVec = useRef(new THREE.Vector3());
-  const targetWorld = useRef(new THREE.Vector3());
-  const targetLocal = useRef(new THREE.Vector3());
-  const lineStart = useRef(new THREE.Vector3());
+  const sideOffset = radius + SIDE_GAP + WIDTH / 2;
 
   useFrame(() => {
     const anchor = anchorRef.current;
-    const parent = anchor?.parent;
-    if (!anchor || !parent) return;
-
-    parent.getWorldPosition(markerWorldPos.current);
-    camera.getWorldPosition(camWorldPos.current);
-
-    dirToMarker.current.copy(markerWorldPos.current).sub(camWorldPos.current);
-    if (dirToMarker.current.lengthSq() < 1e-6) {
-      dirToMarker.current.set(0, 0, -1);
-    } else {
-      dirToMarker.current.normalize();
-    }
+    if (!anchor) return;
 
     rightVec.current.setFromMatrixColumn(camera.matrixWorld, 0);
     upVec.current.setFromMatrixColumn(camera.matrixWorld, 1);
 
-
-    targetWorld.current
-      .copy(camWorldPos.current)
-      .addScaledVector(dirToMarker.current, READ_DISTANCE)
-      .addScaledVector(rightVec.current, SIDE_OFFSET)
+    targetVec.current
+      .copy(rightVec.current)
+      .multiplyScalar(sideOffset)
       .addScaledVector(upVec.current, VERTICAL_LIFT);
 
-    parent.worldToLocal(targetLocal.current.copy(targetWorld.current));
-    anchor.position.lerp(targetLocal.current, FOLLOW_LERP);
-
-
-    const geometry = leaderLine.geometry;
-    const positions = geometry.attributes.position as THREE.BufferAttribute;
-    positions.setXYZ(0, lineStart.current.x, lineStart.current.y, lineStart.current.z);
-    positions.setXYZ(1, anchor.position.x, anchor.position.y, anchor.position.z);
-    positions.needsUpdate = true;
-  
+    anchor.position.lerp(targetVec.current, FOLLOW_LERP);
   });
 
   return (
-    <>
-      <primitive object={leaderLine} />
-      <group ref={anchorRef}>
-        <Billboard>
-          <mesh position={[0, 0, -0.01]} renderOrder={PANEL_RENDER_ORDER}>
-            <planeGeometry args={[WIDTH, totalHeight]} />
-            <meshBasicMaterial
-              color="#ffffff"
-              transparent
-              opacity={0.92}
-              depthTest={false}
-              depthWrite={false}
-            />
-          </mesh>
+    <group ref={anchorRef}>
+      <Billboard>
+        <mesh position={[0, 0, -0.01]} renderOrder={PANEL_RENDER_ORDER}>
+          <planeGeometry args={[WIDTH, totalHeight]} />
+          <meshBasicMaterial
+            color="#ffffff"
+            transparent
+            opacity={0.92}
+            depthTest={false}
+            depthWrite={false}
+          />
+        </mesh>
 
-          {blocks.map((block, i) => {
-            const key = `${point.id}-block-${i}`;
+        {blocks.map((block, i) => {
+          const key = `${point.id}-block-${i}`;
 
-            if (block.type === "title") {
+          if (block.type === "title") {
+            return (
+              <Text
+                key={key}
+                position={[0, block.y, 0.01]}
+                fontSize={0.22}
+                color="#111111"
+                anchorX="center"
+                anchorY="middle"
+                maxWidth={WIDTH - PADDING * 2}
+                textAlign="center"
+                renderOrder={CONTENT_RENDER_ORDER}
+                material-depthTest={false}
+                material-depthWrite={false}
+              >
+                {point.title || "Ponto de Interesse"}
+              </Text>
+            );
+          }
+
+          if (block.type === "description" && point.description) {
+            return (
+              <Text
+                key={key}
+                position={[0, block.y, 0.01]}
+                fontSize={0.14}
+                color="#333333"
+                anchorX="center"
+                anchorY="middle"
+                maxWidth={WIDTH - PADDING * 2}
+                textAlign="center"
+                renderOrder={CONTENT_RENDER_ORDER}
+                material-depthTest={false}
+                material-depthWrite={false}
+              >
+                {point.description}
+              </Text>
+            );
+          }
+
+          if (block.type === "media" && block.media) {
+            if (block.media.type === "image") {
               return (
-                <Text
-                  key={key}
-                  position={[0, block.y, 0.01]}
-                  fontSize={0.22}
-                  color="#111111"
-                  anchorX="center"
-                  anchorY="middle"
-                  maxWidth={WIDTH - PADDING * 2}
-                  textAlign="center"
-                  renderOrder={CONTENT_RENDER_ORDER}
-                  material-depthTest={false}
-                  material-depthWrite={false}
-                >
-                  {point.title || "Ponto de Interesse"}
-                </Text>
+                <Suspense key={key} fallback={null}>
+                  <ImageBlock media={block.media} y={block.y} />
+                </Suspense>
               );
             }
+            if (block.media.type === "audio") return <AudioBlock key={key} media={block.media} y={block.y} />;
+            if (block.media.type === "video") return <VideoBlock key={key} media={block.media} y={block.y} />;
+          }
 
-            if (block.type === "description" && point.description) {
-              return (
-                <Text
-                  key={key}
-                  position={[0, block.y, 0.01]}
-                  fontSize={0.14}
-                  color="#333333"
-                  anchorX="center"
-                  anchorY="middle"
-                  maxWidth={WIDTH - PADDING * 2}
-                  textAlign="center"
-                  renderOrder={CONTENT_RENDER_ORDER}
-                  material-depthTest={false}
-                  material-depthWrite={false}
-                >
-                  {point.description}
-                </Text>
-              );
-            }
-
-            if (block.type === "media" && block.media) {
-              if (block.media.type === "image") {
-                return (
-                  <Suspense key={key} fallback={null}>
-                    <ImageBlock media={block.media} y={block.y} />
-                  </Suspense>
-                );
-              }
-              if (block.media.type === "audio") return <AudioBlock key={key} media={block.media} y={block.y} />;
-              if (block.media.type === "video") return <VideoBlock key={key} media={block.media} y={block.y} />;
-            }
-
-            return null;
-          })}
-        </Billboard>
-      </group>
-    </>
+          return null;
+        })}
+      </Billboard>
+    </group>
   );
 }

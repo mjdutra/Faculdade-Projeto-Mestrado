@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, ThreeEvent } from "@react-three/fiber";
 import { Billboard, Html, Text } from "@react-three/drei";
 import { useXR } from "@react-three/xr";
 import * as THREE from "three";
@@ -31,6 +31,8 @@ const DRAG_THRESHOLD = 6;
 const LABEL_MAX_LENGTH = 18;
 const LABEL_LERP_FACTOR = 0.18;
 
+const HIT_RADIUS_MULTIPLIER = { desktop: 1.8, vr: 2.4 };
+
 function shortenTitle(title: string) {
   const clean = title?.trim() || "Ponto de Interesse";
   return clean.length > LABEL_MAX_LENGTH
@@ -41,7 +43,8 @@ function shortenTitle(title: string) {
 export function Hotspot({ 
   point, position, video, isAddingPOI, onHoverChange, isSelected = false, isDragging = false, onSelectChange, onDragStart
 }: HotspotProps) {
-  const meshRef = useRef<THREE.Mesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
+  const visualMeshRef = useRef<THREE.Mesh>(null);
   const labelTextRef = useRef<any>(null);
   const [hovered, setHovered] = useState(false);
   const [active, setActive] = useState(true);
@@ -50,12 +53,12 @@ export function Hotspot({
   const highlighted = hovered || isSelected || isDragging;
   const showContent = (hovered || isSelected) && !isDragging;
 
-  useFrame(({ clock }, delta) => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
+  useFrame(({ clock }) => {
+    const group = groupRef.current;
+    if (!group) return;
 
     const isVisible = isPointActive(point, video.currentTime);
-    mesh.visible = isVisible;
+    group.visible = isVisible;
 
     if (isVisible !== active) setActive(isVisible);
 
@@ -65,22 +68,20 @@ export function Hotspot({
       return;
     }
 
-    if (inVR && !hovered && !isSelected) {
-      const pulse = 1 + Math.sin(clock.elapsedTime * PULSE_SPEED) * PULSE_AMOUNT;
-      mesh.scale.setScalar(pulse);
-    } else {
-      mesh.scale.setScalar(1);
+    const visualMesh = visualMeshRef.current;
+    if (visualMesh) {
+      if (inVR && !hovered && !isSelected) {
+        const pulse = 1 + Math.sin(clock.elapsedTime * PULSE_SPEED) * PULSE_AMOUNT;
+        visualMesh.scale.setScalar(pulse);
+      } else {
+        visualMesh.scale.setScalar(1);
+      }
     }
 
-  
     if (labelTextRef.current) {
       const target = showContent ? 0 : 1;
       const current = labelTextRef.current.fillOpacity ?? 1;
-      labelTextRef.current.fillOpacity = THREE.MathUtils.lerp(
-        current,
-        target,
-        LABEL_LERP_FACTOR
-      );
+      labelTextRef.current.fillOpacity = THREE.MathUtils.lerp(current, target, LABEL_LERP_FACTOR);
     }
   });
 
@@ -95,79 +96,92 @@ export function Hotspot({
     ? (inVR ? HOVER_RADIUS.vr : HOVER_RADIUS.desktop)
     : (inVR ? BASE_RADIUS.vr : BASE_RADIUS.desktop);
 
+  const baseRadius = inVR ? BASE_RADIUS.vr : BASE_RADIUS.desktop;
+  const hitRadius = baseRadius * (inVR ? HIT_RADIUS_MULTIPLIER.vr : HIT_RADIUS_MULTIPLIER.desktop);
+
   const shortTitle = shortenTitle(point.title);
 
+  const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    if (!hovered) { setHovered(true); onHoverChange?.(point.id, true); }
+  };
+
+  const handlePointerOut = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    setHovered(false);
+    onHoverChange?.(point.id, false);
+  };
+
+  const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    if (isAddingPOI) return;
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let dragStarted = false;
+
+    const handleWindowMove = (ev: PointerEvent) => {
+      if (dragStarted) return;
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD) {
+        dragStarted = true;
+        onDragStart?.(point.id);
+        window.removeEventListener("pointermove", handleWindowMove);
+      }
+    };
+
+    const handleWindowUp = () => {
+      window.removeEventListener("pointermove", handleWindowMove);
+      window.removeEventListener("pointerup", handleWindowUp);
+      if (!dragStarted) {
+        onSelectChange?.(point.id);
+      }
+    };
+
+    window.addEventListener("pointermove", handleWindowMove);
+    window.addEventListener("pointerup", handleWindowUp);
+  };
+
   return (
-    <mesh
-      ref={meshRef}
-      position={position}
-      pointerEventsOrder={100}
-      pointerEventsType={{ deny: "grab" }}
-      onPointerOver={(e) => {
-        e.stopPropagation();
-        if (!hovered) { setHovered(true); onHoverChange?.(point.id, true); }
-      }}
-      onPointerOut={(e) => {
-        e.stopPropagation();
-        setHovered(false);
-        onHoverChange?.(point.id, false);
-      }}
-      onPointerDown={(e) => {
-        e.stopPropagation();
+    <group ref={groupRef} position={position}>
+      <mesh
+        pointerEventsOrder={100}
+        pointerEventsType={{ deny: "grab" }}
+        onPointerOver={handlePointerOver}
+        onPointerOut={handlePointerOut}
+        onPointerDown={handlePointerDown}
+      >
+        <sphereGeometry args={[hitRadius, 12, 12]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
 
-        const startX = e.clientX;
-        const startY = e.clientY;
-        let dragStarted = false;
-
-        const handleWindowMove = (ev: PointerEvent) => {
-          if (dragStarted) return;
-          const dx = ev.clientX - startX;
-          const dy = ev.clientY - startY;
-          if (Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD) {
-            dragStarted = true;
-            onDragStart?.(point.id);
-            window.removeEventListener("pointermove", handleWindowMove);
-          }
-        };
-
-        const handleWindowUp = () => {
-          window.removeEventListener("pointermove", handleWindowMove);
-          window.removeEventListener("pointerup", handleWindowUp);
-          if (!dragStarted) {
-            onSelectChange?.(point.id);
-          }
-        };
-
-        window.addEventListener("pointermove", handleWindowMove);
-        window.addEventListener("pointerup", handleWindowUp);
-      }}
-    >
-      <sphereGeometry args={[radius, 16, 16]} />
-      <meshBasicMaterial color={highlighted ? "#ffffff" : "#ff0000"} />
+      <mesh ref={visualMeshRef}>
+        <sphereGeometry args={[radius, 16, 16]} />
+        <meshBasicMaterial color={highlighted ? "#ffffff" : "#ff0000"} />
+      </mesh>
 
       {active && !inVR && (
         <>
-          {/* título encurtado */}
           <Html
             center
             style={{
               pointerEvents: "none",
-              transform: "translate(10%, -55%)",
+              transform: "translate(20%, -55%)",
               opacity: showContent ? 0 : 1,
               transition: "opacity 200ms ease",
             }}
           >
-            <span className="px-2 py-1 bg-black/30 text-white text-[10px] font-bold uppercase tracking-widest whitespace-nowrap rounded-sm">
+            <span className="px-2 py-1 bg-black/60 text-white text-[10px] font-bold uppercase tracking-widest whitespace-nowrap rounded-sm">
               {shortTitle}
             </span>
           </Html>
 
-          {/* Painel visível em hover*/}
           <Html
             center
             style={{
               pointerEvents: "none",
-              transform: "translate(5%, -50%)",
+              transform: "translate(10%, -50%)",
               opacity: showContent ? 1 : 0,
               transition: "opacity 200ms ease",
             }}
@@ -179,7 +193,6 @@ export function Hotspot({
 
       {active && inVR && (
         <>
-          {/* título encurtado */}
           <Billboard position={[0, radius + 0.35, 0]}>
             <Text
               ref={labelTextRef}
@@ -196,12 +209,10 @@ export function Hotspot({
           </Billboard>
 
           {showContent && (
-            <HotspotVR 
-              point={point} 
-              radius={radius} />
+            <HotspotVR point={point} radius={radius} />
           )}
         </>
       )}
-    </mesh>
+    </group>
   );
 }

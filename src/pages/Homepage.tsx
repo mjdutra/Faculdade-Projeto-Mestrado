@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/config";
 import { Link, useSearchParams } from "react-router-dom";
-import { LayoutGrid } from "lucide-react";
+import { LayoutGrid, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { shortenLocation } from "@/lib/locationshort";
 import TopNav from "@/components/TopNav";
@@ -24,13 +24,13 @@ const MAX_TILT_DEG = 10;
 const TILT_FACTOR = 0.6;
 
 const COLLISION_RATIO = 0.55;
-const COLLISION_STRENGTH = 0.12;
+const COLLISION_STRENGTH = 0.16;
 const MAX_PUSH_PER_FRAME = 4;
 
 const MIN_DISTANCE = 20; // desktop
 const MOBILE_MIN_DISTANCE = 16; // mobile
 
-const MAGNETS_PER_ROW = 4;
+const MAGNETS_PER_ROW = 10;
 const ROW_HEIGHT = 500;
 
 
@@ -39,7 +39,7 @@ const MOBILE_BREAKPOINT = 768;
 // Margem extra 
 const EDGE_BUFFER_PX = 8;
 // Limite de segurança para a margem horizontal
-const MAX_HORIZONTAL_MARGIN_PERCENT = 20;
+const MAX_HORIZONTAL_MARGIN_PERCENT = 6;
 
 const DESKTOP_SPAWN_Y = { yMin: 8, yMax: 92 };
 const MOBILE_SPAWN_Y = { yMin: 62, yMax: 90 };

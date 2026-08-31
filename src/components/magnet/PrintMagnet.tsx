@@ -31,7 +31,6 @@ export default function PrintMagnet({ magnet, open, onClose }: Props) {
   const [reliefHeight, setReliefHeight] = useState(0.02);
   const [flipNormal, setFlipNormal] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [includeGlb, setIncludeGlb] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
 
@@ -101,7 +100,6 @@ export default function PrintMagnet({ magnet, open, onClose }: Props) {
         mode,
         reliefHeight,
         flipNormal,
-        includeGlb,
         onProgress: setExportProgress,
       });
 
@@ -111,10 +109,6 @@ export default function PrintMagnet({ magnet, open, onClose }: Props) {
         );
       } else {
         toast.success(`${result.stlFilename} está pronto para download.`);
-      }
-
-      if (result.glbFilename) {
-        toast.success(`${result.glbFilename} também foi exportado.`);
       }
     } catch (error) {
       console.error("[PrintMagnet] Erro na exportação:", error);
@@ -238,15 +232,6 @@ export default function PrintMagnet({ magnet, open, onClose }: Props) {
             </div>
 
             <div className="pt-6 border-t border-gray-200 space-y-3">
-              <label className="flex items-center gap-2 text-sm text-gray-600">
-                <input
-                  type="checkbox"
-                  checked={includeGlb}
-                  onChange={(e) => setIncludeGlb(e.target.checked)}
-                  disabled={exporting}
-                />
-                Exportar também em .glb
-              </label>
 
               <Button
                 type="button"

@@ -18,6 +18,7 @@ const Scan = () => {
 
 
   const [existingIds, setExistingIds] = useState<string[]>([]);
+  const existingIdsRef = useRef<string[]>([]);
   const [manualValue, setManualValue] = useState("");
 
   useEffect(() => {
@@ -33,6 +34,10 @@ const Scan = () => {
 
     fetchExistingIds();
   }, []);
+
+  useEffect(() => {
+    existingIdsRef.current = existingIds;
+  }, [existingIds]);
 
   const suggestions = (
     manualValue.trim()
@@ -68,16 +73,14 @@ const Scan = () => {
 
           },
           async (decodedText) => {
-            setScanResult(decodedText);
-            setIsSuccess(true);
-            setIsScanning(false);
-
             try {
               await qrScanner.current?.stop();
               qrScanner.current?.clear();
             } catch (err) {
               console.error("Erro ao parar o scanner:", err);
             }
+            qrScanner.current = null;
+            setIsScanning(false);
 
             let magnetId = decodedText.trim();
             try {
@@ -86,7 +89,14 @@ const Scan = () => {
             } catch {
             }
 
-            window.location.href = `${BASE}/?magnet=${encodeURIComponent(magnetId)}`;
+            const exists = existingIdsRef.current.includes(magnetId);
+
+            setScanResult(magnetId);
+            setIsSuccess(exists);
+
+            if (exists) {
+              window.location.href = `${BASE}/?magnet=${encodeURIComponent(magnetId)}`;
+            }
           },
           () => {}
         );
@@ -140,12 +150,16 @@ const Scan = () => {
 
     if (!magnetId) return;
 
-    setScanResult(magnetId);
-    setIsSuccess(true);
+    const exists = existingIds.includes(magnetId);
 
-    setTimeout(() => {
-      window.location.href = `${BASE}/?magnet=${encodeURIComponent(magnetId)}`;
-    }, 1000);
+    setScanResult(magnetId);
+    setIsSuccess(exists);
+
+    if (exists) {
+      setTimeout(() => {
+        window.location.href = `${BASE}/?magnet=${encodeURIComponent(magnetId)}`;
+      }, 1000);
+    }
   };
 
   return (
@@ -213,12 +227,12 @@ const Scan = () => {
 
                     <div className="flex flex-col">
                       <span className="font-semibold">
-                        {isSuccess ? 'QR Code Encontrado!' : 'QR Code Inválido'}
+                        {isSuccess ? 'QR Code Encontrado!' : 'Código Não Encontrado'}
                       </span>
                       <p className="text-sm">
                         {isSuccess
                           ? `A redirecionar para a experiência: ${scanResult}`
-                          : 'O QR code não foi reconhecido. Tente novamente.'
+                          : `O código "${scanResult}" não existe. Verifica o ID e tenta novamente.`
                         }
                       </p>
                     </div>

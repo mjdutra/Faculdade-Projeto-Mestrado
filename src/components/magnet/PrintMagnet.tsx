@@ -188,20 +188,26 @@ export default function PrintMagnet({ magnet, open, onClose }: Props) {
 
             <div>
               <label className="text-sm text-gray-500 mb-2 block">Relevo</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2">
                 <Button
                   type="button"
-                  variant={mode === "emboss" ? "default" : "outline"}
                   onClick={() => setMode("emboss")}
-                  className="rounded-none uppercase text-xs font-bold tracking-widest"
+                  className={`rounded-none uppercase text-xs font-bold tracking-widest ${
+                    mode === "emboss"
+                      ? "bg-black text-white hover:bg-primary"
+                      : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                  }`}
                 >
                   Alto relevo
                 </Button>
                 <Button
                   type="button"
-                  variant={mode === "deboss" ? "default" : "outline"}
                   onClick={() => setMode("deboss")}
-                  className="rounded-none uppercase text-xs font-bold tracking-widest"
+                  className={`rounded-none uppercase text-xs font-bold tracking-widest ${
+                    mode === "deboss"
+                      ? "bg-black text-white hover:bg-primary"
+                      : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                  }`}
                 >
                   Baixo relevo
                 </Button>

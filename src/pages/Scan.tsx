@@ -44,81 +44,90 @@ const Scan = () => {
 
   useEffect(() => {
     return () => {
-        qrScanner.current?.stop().catch(() => {});
+      qrScanner.current?.stop().catch(() => {});
+      try {
         qrScanner.current?.clear();
+      } catch {
+      }
     };
-}, []);
+  }, []);
 
 
-useEffect(() => {
-  if (!isScanning) return;
+  useEffect(() => {
+    if (!isScanning) return;
 
-  const startCamera = async () => {
-    try {
-      qrScanner.current = new Html5Qrcode("reader");
+    const startCamera = async () => {
+      try {
+        qrScanner.current = new Html5Qrcode("reader");
 
-      await qrScanner.current.start(
-        { facingMode: "environment"},
-        {
-          fps: 30,
-          qrbox: { width: 300, height: 400 },
+        await qrScanner.current.start(
+          { facingMode: "environment" },
+          {
+            fps: 30,
+            qrbox: { width: 300, height: 400 },
 
-        },
-        async (decodedText) => {
-          setScanResult(decodedText);
-          setIsSuccess(true);
-          setIsScanning(false);
+          },
+          async (decodedText) => {
+            setScanResult(decodedText);
+            setIsSuccess(true);
+            setIsScanning(false);
 
-          try {
-            await qrScanner.current?.stop();
-            await qrScanner.current?.clear();
-          } catch (err) {
-            console.error("Erro ao parar o scanner:", err);
-          }
+            try {
+              await qrScanner.current?.stop();
+              qrScanner.current?.clear();
+            } catch (err) {
+              console.error("Erro ao parar o scanner:", err);
+            }
 
-          let magnetId = decodedText.trim();
-          try {
-            const parsed = new URL(decodedText);
-            magnetId = parsed.searchParams.get("magnet") ?? magnetId;
-          } catch {
-          }
+            let magnetId = decodedText.trim();
+            try {
+              const parsed = new URL(decodedText);
+              magnetId = parsed.searchParams.get("magnet") ?? magnetId;
+            } catch {
+            }
 
-          window.location.href = `${BASE}/?magnet=${encodeURIComponent(magnetId)}`;
-        },
-        () => {}
-      );
-    } catch (err) {
-      console.error(err);
-      setIsScanning(false);
-    }
+            window.location.href = `${BASE}/?magnet=${encodeURIComponent(magnetId)}`;
+          },
+          () => {}
+        );
+      } catch (err) {
+        console.error("Erro ao aceder à câmara:", err);
+        qrScanner.current = null;
+        setIsScanning(false);
+      }
+    };
+
+    const timeoutId = setTimeout(startCamera, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      qrScanner.current?.stop().catch(() => {});
+      try {
+        qrScanner.current?.clear();
+      } catch {
+      }
+    };
+  }, [isScanning]);
+
+
+
+
+  const startScanning = () => {
+    setScanResult(null);
+    setIsSuccess(false);
+    setIsScanning(true);
   };
-
-  setTimeout(startCamera, 100);
-
-  return () => {
-    qrScanner.current?.stop().catch(() => {});
-    qrScanner.current?.clear();
-  };
-}, [isScanning]);
-
-
-
-
-const startScanning = () => {
-  setScanResult(null);
-  setIsSuccess(false);
-  setIsScanning(true);
-};
 
   const stopScanning = async () => {
     try {
-        if (qrScanner.current) {
-            await qrScanner.current.stop();
-            await qrScanner.current.clear();
-            qrScanner.current = null;
-        }
+      if (qrScanner.current) {
+        await qrScanner.current.stop();
+        qrScanner.current.clear();
+        qrScanner.current = null;
+      }
     } catch (err) {
-        console.error(err);
+      console.error(err);
+      qrScanner.current = null;
     }
 
     setIsScanning(false);

@@ -57,7 +57,7 @@ export default function PrintMagnet({ magnet, open, onClose }: Props) {
   const handleSave = async () => {
     if (!magnet) return;
     if (!decal) {
-      toast.error("Posicione o QR Code sobre o íman antes de guardar.");
+      toast.error("Posicione o QR Code sobre o magnet antes de guardar.");
       return;
     }
     try {
@@ -84,7 +84,7 @@ export default function PrintMagnet({ magnet, open, onClose }: Props) {
   const handleExportPrint = async () => {
     if (!magnet) return;
     if (!decal) {
-      toast.error("Posicione o QR Code sobre o íman antes de exportar.");
+      toast.error("Posicione o QR Code sobre o magnet antes de exportar.");
       return;
     }
 
@@ -154,7 +154,7 @@ export default function PrintMagnet({ magnet, open, onClose }: Props) {
             {!decal && (
               <div className="absolute inset-x-0 bottom-4 flex justify-center pointer-events-none px-4">
                 <p className="text-xs uppercase tracking-widest bg-black text-white px-4 py-2 text-center">
-                  Clique sobre o íman para posicionar o QR Code
+                  Clique sobre o magnet para posicionar o QR Code
                 </p>
               </div>
             )}
@@ -162,7 +162,7 @@ export default function PrintMagnet({ magnet, open, onClose }: Props) {
 
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             <div>
-              <p className="text-sm text-gray-500 mb-1">ID do íman</p>
+              <p className="text-sm text-gray-500 mb-1">ID do magnet</p>
               <p className="font-mono text-sm break-all">{magnet.id}</p>
             </div>
 

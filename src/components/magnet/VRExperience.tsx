@@ -61,7 +61,7 @@ export default function VRExperience({ magnet, onClose }: Props) {
     <div ref={containerRef} className="fixed inset-0 z-[999999] bg-black">
       <button
         onClick={onClose}
-        aria-label="Voltar ao íman"
+        aria-label="Voltar ao magnet"
         className="absolute top-4 left-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
       >
         <ArrowLeft size={22} />

@@ -167,7 +167,7 @@ export async function exportMagnetForPrint({
     await nextFrame();
 
     //união booleana (Brush A ∪ Brush B)
-    report("boolean-union", 45, "A fundir o QR Code com o íman...");
+    report("boolean-union", 45, "A fundir o QR Code com o magnet...");
     const modelMaterial = track(new THREE.MeshStandardMaterial());
     const qrMaterial = track(new THREE.MeshStandardMaterial());
 

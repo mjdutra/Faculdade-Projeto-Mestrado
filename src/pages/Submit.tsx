@@ -22,7 +22,7 @@ const STEPS = [
   { id: 1, label: "Informação"},
   { id: 2, label: "Vídeo 360º"},
   { id: 3, label: "Pontos de Interesse"},
-  { id: 4, label: "Íman 3D"},
+  { id: 4, label: "Magnet 3D"},
 ];
 
 const getTodayDateString = () => {
@@ -997,7 +997,7 @@ const Submit = () => {
                           </div>
                         ) : (
                           <p className="text-sm text-gray-400 mt-2">
-                            Selecione o modelo 3D do íman no formato .glb (máx. 10MB)
+                            Selecione o modelo 3D do magnet no formato .glb (máx. 10MB)
                           </p>
                         )}
 

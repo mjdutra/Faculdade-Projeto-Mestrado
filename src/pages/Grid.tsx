@@ -336,7 +336,7 @@ const Grid = () => {
             )}
         </div>
 
-        {/* Preview do íman */}
+        {/* Preview do magnet */}
         <div
             className={`fixed top-1/2 -translate-y-1/2
             w-[450px] h-[450px]

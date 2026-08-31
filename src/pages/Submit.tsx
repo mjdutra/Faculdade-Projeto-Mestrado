@@ -25,7 +25,13 @@ const STEPS = [
   { id: 4, label: "Íman 3D"},
 ];
 
-
+const getTodayDateString = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 function AspectFitBox({
   ratio = 16 / 9,
@@ -616,14 +622,19 @@ const Submit = () => {
                     </div>
                     <div>
                       <Label htmlFor="date">Data</Label>
-                      <Input
-                        id="date"
-                        type="date"
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        className="mt-1"
-                      />
-                    </div>
+                          <Input
+                            id="date"
+                            type="date"
+                            value={date}
+                            max={getTodayDateString()}
+                            onChange={(e) => {
+                              const selected = e.target.value;
+                              const today = getTodayDateString();
+                              setDate(selected > today ? today : selected);
+                            }}
+                            className="mt-1"
+                          />
+                        </div>
                     <div>
                       <Label htmlFor="description">Descrição</Label>
                       <Textarea

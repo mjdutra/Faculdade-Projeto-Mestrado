@@ -620,21 +620,31 @@ const Submit = () => {
                         className="mt-1"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="date">Data</Label>
-                          <Input
-                            id="date"
-                            type="date"
-                            value={date}
-                            max={getTodayDateString()}
-                            onChange={(e) => {
-                              const selected = e.target.value;
-                              const today = getTodayDateString();
-                              setDate(selected > today ? today : selected);
-                            }}
-                            className="mt-1"
-                          />
-                        </div>
+                      <div>
+                        <Label htmlFor="date">Data</Label>
+                        <Input
+                          id="date"
+                          type="date"
+                          value={date}
+                          max={getTodayDateString()}
+                          onChange={(e) => {
+                            const selected = e.target.value;
+                            const today = getTodayDateString();
+
+                            if (selected === "") {
+                              setDate(selected);
+                              return;
+                            }
+
+                            if (selected > today) {
+                              return;
+                            }
+
+                            setDate(selected);
+                          }}
+                          className="mt-1"
+                        />
+                      </div>
                     <div>
                       <Label htmlFor="description">Descrição</Label>
                       <Textarea

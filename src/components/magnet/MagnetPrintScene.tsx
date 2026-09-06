@@ -50,7 +50,6 @@ export default function MagnetPrintScene({
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
 
-    // Centrar o modelo antes de calcular a escala.
     clonedScene.position.sub(center);
 
     const maxDimension = Math.max(size.x, size.y, size.z);

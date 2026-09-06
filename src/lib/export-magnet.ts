@@ -78,6 +78,9 @@ async function loadModelGeometry(modelUrl: string): Promise<THREE.BufferGeometry
   const gltf = await loader.loadAsync(modelUrl);
   gltf.scene.updateWorldMatrix(true, true);
 
+  const box = new THREE.Box3().setFromObject(gltf.scene);
+  const center = box.getCenter(new THREE.Vector3());
+
   const parts: THREE.BufferGeometry[] = [];
   gltf.scene.traverse((child) => {
     if ((child as THREE.Mesh).isMesh) {
@@ -100,6 +103,10 @@ async function loadModelGeometry(modelUrl: string): Promise<THREE.BufferGeometry
       "Não foi possível fundir as malhas do modelo — as partes do .glb têm atributos incompatíveis."
     );
   }
+
+  // Recentra a geometria exatamente como o preview recentra o modelo, para
+  // alinhar este referencial com o de decal.position/decal.normal.
+  merged.translate(-center.x, -center.y, -center.z);
 
   return merged;
 }

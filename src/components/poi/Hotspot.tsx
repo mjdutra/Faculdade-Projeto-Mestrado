@@ -31,7 +31,7 @@ const DRAG_THRESHOLD = 6;
 const LABEL_MAX_LENGTH = 18;
 const LABEL_LERP_FACTOR = 0.18;
 
-const HIT_RADIUS_MULTIPLIER = { desktop: 1.8, vr: 2.6 };
+const HIT_RADIUS_MULTIPLIER = { desktop: 1.8, vr: 2.4 };
 
 function shortenTitle(title: string) {
   const clean = title?.trim() || "Ponto de Interesse";
@@ -191,7 +191,7 @@ export function Hotspot({
         </>
       )}
 
-      {active && inVR && (
+      {/* {active && inVR && (
         <>
           <Billboard position={[0, radius + 0.35, 0]}>
             <Text
@@ -212,7 +212,7 @@ export function Hotspot({
             <HotspotVR point={point} radius={radius} />
           )}
         </>
-      )}
+      )} */}
     </group>
   );
 }

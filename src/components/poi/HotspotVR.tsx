@@ -345,7 +345,7 @@ export function HotspotVR({ point, radius }: HotspotVRProps) {
               <Text
                 key={key}
                 position={[-WIDTH / 2 + PADDING, block.y, 0.01]}
-                fontSize={1} //Tamanho do título
+                fontSize={0.7} //Tamanho do título
                 color="#000000"
                 anchorX="left"
                 anchorY="middle"

@@ -6,11 +6,25 @@ import * as THREE from "three";
 import { PointOfInterest, POIMedia } from "./PointOfInterest";
 
 const WIDTH = 6;
-const PADDING = 0.45;
-const TITLE_HEIGHT = 0.65;
-const DESC_LINE_HEIGHT = 0.40;
+const PADDING = 0.45; 
+const CONTENT_WIDTH = WIDTH - PADDING * 2;
+
+//Título
+const TITLE_FONT_SIZE = 0.7;
+const TITLE_LINE_HEIGHT = TITLE_FONT_SIZE * 1.2;
+const TITLE_CHAR_WIDTH_FACTOR = 0.55; 
+
+//Descrição
+const DESC_FONT_SIZE = 0.5;
+const DESC_LINE_HEIGHT = DESC_FONT_SIZE * 1.25;
+const DESC_CHAR_WIDTH_FACTOR = 0.55;
+
+// Espaçamento entre título e descrição
+const TITLE_DESC_GAP = 0.18;
+
 const IMAGE_HEIGHT = 1.8;
 const AV_HEIGHT = 0.65;
+const VIDEO_HEIGHT = AV_HEIGHT * 2.2;
 
 const SIDE_GAP = 0.5; //Esfera e painel
 const VERTICAL_LIFT = 0.1; //Painel levantado
@@ -18,7 +32,6 @@ const FOLLOW_LERP = 0.2;
 
 // Margem extra do painel
 const BLUR_MARGIN = 0.3;
-
 
 const PANEL_RENDER_ORDER = 20;
 const DIVIDER_RENDER_ORDER = PANEL_RENDER_ORDER + 1;
@@ -46,7 +59,7 @@ function drawRoundedRect(
 
 function getFrostedPanelTexture(): THREE.CanvasTexture | null {
   if (frostedPanelTexture) return frostedPanelTexture;
-  if (typeof document === "undefined") return null; 
+  if (typeof document === "undefined") return null;
 
   const size = 512;
   const blurPx = 30;
@@ -77,46 +90,100 @@ interface Block {
   y: number;
 }
 
+
+function estimateTextLines(
+  text: string,
+  fontSize: number,
+  maxWidth: number,
+  charWidthFactor: number
+) {
+  const avgCharWidth = fontSize * charWidthFactor;
+  const charsPerLine = Math.max(1, Math.floor(maxWidth / avgCharWidth));
+  return Math.max(1, Math.ceil(text.length / charsPerLine));
+}
+
 function buildLayout(point: PointOfInterest) {
-  const raw: Omit<Block, "y">[] = [{ type: "title", height: TITLE_HEIGHT }];
+  const titleText = point.title || "Ponto de Interesse";
+  const titleLines = estimateTextLines(
+    titleText,
+    TITLE_FONT_SIZE,
+    CONTENT_WIDTH,
+    TITLE_CHAR_WIDTH_FACTOR
+  );
+
+  const raw: Omit<Block, "y">[] = [
+    { type: "title", height: titleLines * TITLE_LINE_HEIGHT },
+  ];
 
   if (point.description) {
-    const lines = Math.max(1, Math.ceil(point.description.length / 42));
-    raw.push({ type: "description", height: Math.min(1.3, 0.2 + lines * DESC_LINE_HEIGHT) });
+    const descLines = estimateTextLines(
+      point.description,
+      DESC_FONT_SIZE,
+      CONTENT_WIDTH,
+      DESC_CHAR_WIDTH_FACTOR
+    );
+    raw.push({ type: "description", height: descLines * DESC_LINE_HEIGHT });
   }
 
   point.media?.forEach((media) => {
-    raw.push({ type: "media", height: media.type === "image" ? IMAGE_HEIGHT : AV_HEIGHT, media });
+    const height =
+      media.type === "image"
+        ? IMAGE_HEIGHT
+        : media.type === "video"
+        ? VIDEO_HEIGHT
+        : AV_HEIGHT;
+    raw.push({ type: "media", height, media });
   });
 
-  const totalHeight = raw.reduce((sum, b) => sum + b.height, 0) + PADDING * (raw.length + 1);
-  let cursorY = totalHeight / 2 - PADDING;
 
-  const blocks: Block[] = raw.map((b) => {
+  const gapBefore = raw.map((block, i) => {
+    if (i === 0) return 0;
+    const prev = raw[i - 1];
+    return prev.type === "title" && block.type === "description"
+      ? TITLE_DESC_GAP
+      : PADDING;
+  });
+
+  const contentHeight = raw.reduce((sum, b) => sum + b.height, 0);
+  const gapsHeight = gapBefore.reduce((sum, g) => sum + g, 0);
+  const totalHeight = contentHeight + gapsHeight + PADDING * 2;
+
+  let cursorY = totalHeight / 2 - PADDING;
+  const blocks: Block[] = raw.map((b, i) => {
+    cursorY -= gapBefore[i];
     const y = cursorY - b.height / 2;
-    cursorY -= b.height + PADDING;
+    cursorY -= b.height;
     return { ...b, y };
   });
 
-  return { blocks, totalHeight };
+
+  const firstMediaIndex = blocks.findIndex((b) => b.type === "media");
+  const dividerY =
+    firstMediaIndex > 0
+      ? (blocks[firstMediaIndex - 1].y -
+          blocks[firstMediaIndex - 1].height / 2 +
+          (blocks[firstMediaIndex].y + blocks[firstMediaIndex].height / 2)) /
+        2
+      : null;
+
+  return { blocks, totalHeight, dividerY };
 }
 
 function ImageBlock({ media, y }: { media: POIMedia; y: number }) {
   const texture = useTexture(media.url);
-  const contentWidth = WIDTH - PADDING * 2;
   const imageHeight = IMAGE_HEIGHT - PADDING;
 
   return (
     <group position={[0, y, 0]}>
       <mesh position={[0, 0, 0.01]} renderOrder={CONTENT_RENDER_ORDER}>
-        <planeGeometry args={[contentWidth, imageHeight]} />
+        <planeGeometry args={[CONTENT_WIDTH, imageHeight]} />
         <meshBasicMaterial map={texture} toneMapped={false} depthTest={false} depthWrite={false} />
       </mesh>
 
       {media.caption && (
         <group position={[0, -imageHeight / 2 + 0.18, 0.02]}>
           <mesh renderOrder={CONTENT_RENDER_ORDER}>
-            <planeGeometry args={[contentWidth, 0.34]} />
+            <planeGeometry args={[CONTENT_WIDTH, 0.34]} />
             <meshBasicMaterial
               color="#ffffff"
               transparent
@@ -127,11 +194,11 @@ function ImageBlock({ media, y }: { media: POIMedia; y: number }) {
           </mesh>
           <Text
             position={[0, 0, 0.01]}
-            fontSize={3}
+            fontSize={0.3}
             color="#000000"
             anchorX="left"
             anchorY="middle"
-            maxWidth={contentWidth - 0.16}
+            maxWidth={CONTENT_WIDTH - 0.16}
             textAlign="left"
             renderOrder={OVERLAY_RENDER_ORDER}
             material-depthTest={false}
@@ -174,12 +241,10 @@ function AudioBlock({ media, y }: { media: POIMedia; y: number }) {
     }
   };
 
-  const contentWidth = WIDTH - PADDING * 2;
-
   return (
     <group position={[0, y, 0.01]} onClick={toggle} pointerEventsType={{ deny: "grab" }}>
       <mesh renderOrder={CONTENT_RENDER_ORDER}>
-        <planeGeometry args={[contentWidth, AV_HEIGHT - 0.13]} />
+        <planeGeometry args={[CONTENT_WIDTH, AV_HEIGHT - 0.13]} />
         <meshBasicMaterial
           color={playing ? "#e5e5e5" : "#f2f2f2"}
           depthTest={false}
@@ -246,13 +311,10 @@ function VideoBlock({ media, y }: { media: POIMedia; y: number }) {
     }
   };
 
-  const contentWidth = WIDTH - PADDING * 2;
-  const height = AV_HEIGHT * 2.2;
-
   return (
     <group position={[0, y, 0.01]} onClick={toggle} pointerEventsType={{ deny: "grab" }}>
       <mesh renderOrder={CONTENT_RENDER_ORDER}>
-        <planeGeometry args={[contentWidth, height]} />
+        <planeGeometry args={[CONTENT_WIDTH, VIDEO_HEIGHT]} />
         <meshBasicMaterial map={texture} toneMapped={false} depthTest={false} depthWrite={false} />
       </mesh>
       {!playing && (
@@ -281,7 +343,7 @@ interface HotspotVRProps {
 }
 
 export function HotspotVR({ point, radius }: HotspotVRProps) {
-  const { blocks, totalHeight } = useMemo(() => buildLayout(point), [point]);
+  const { blocks, totalHeight, dividerY } = useMemo(() => buildLayout(point), [point]);
   const { camera } = useThree();
   const panelTexture = useMemo(() => getFrostedPanelTexture(), []);
 
@@ -321,11 +383,8 @@ export function HotspotVR({ point, radius }: HotspotVRProps) {
           />
         </mesh>
 
-        {blocks.length > 1 && (
-          <mesh
-            position={[0, blocks[0].y - blocks[0].height / 2 - PADDING / 2, 0.008]}
-            renderOrder={DIVIDER_RENDER_ORDER}
-          >
+        {dividerY !== null && (
+          <mesh position={[0, dividerY, 0.008]} renderOrder={DIVIDER_RENDER_ORDER}>
             <planeGeometry args={[WIDTH - PADDING * 2.4, 0.016]} />
             <meshBasicMaterial
               color="#000000"
@@ -345,11 +404,11 @@ export function HotspotVR({ point, radius }: HotspotVRProps) {
               <Text
                 key={key}
                 position={[-WIDTH / 2 + PADDING, block.y, 0.01]}
-                fontSize={0.7} //Tamanho do título
+                fontSize={TITLE_FONT_SIZE} //Tamanho do título
                 color="#000000"
                 anchorX="left"
                 anchorY="middle"
-                maxWidth={WIDTH - PADDING * 2}
+                maxWidth={CONTENT_WIDTH}
                 textAlign="left"
                 overflowWrap="break-word"
                 renderOrder={CONTENT_RENDER_ORDER}
@@ -366,11 +425,11 @@ export function HotspotVR({ point, radius }: HotspotVRProps) {
               <Text
                 key={key}
                 position={[-WIDTH / 2 + PADDING, block.y, 0.01]}
-                fontSize={0.5} //Tamanho da descrição 
+                fontSize={DESC_FONT_SIZE} //Tamanho da descrição
                 color="#000000"
                 anchorX="left"
                 anchorY="middle"
-                maxWidth={WIDTH - PADDING * 2}
+                maxWidth={CONTENT_WIDTH}
                 textAlign="left"
                 renderOrder={CONTENT_RENDER_ORDER}
                 overflowWrap="break-word"

@@ -193,7 +193,7 @@ export function Hotspot({
 
       {active && inVR && (
         <>
-          <Billboard position={[0, radius + 0.35, 0]}>
+          {/* <Billboard position={[0, radius + 0.35, 0]}>
             <Text
               ref={labelTextRef}
               fontSize={1}
@@ -206,7 +206,7 @@ export function Hotspot({
             >
               {shortTitle}
             </Text>
-          </Billboard>
+          </Billboard> */}
 
           {showContent && (
             <HotspotVR point={point} radius={radius} />

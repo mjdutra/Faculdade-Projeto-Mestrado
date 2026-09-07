@@ -8,7 +8,7 @@ import { PointOfInterest, POIMedia } from "./PointOfInterest";
 const WIDTH = 6;
 const PADDING = 0.45;
 const TITLE_HEIGHT = 0.65;
-const DESC_LINE_HEIGHT = 0.20;
+const DESC_LINE_HEIGHT = 0.40;
 const IMAGE_HEIGHT = 1.8;
 const AV_HEIGHT = 0.65;
 

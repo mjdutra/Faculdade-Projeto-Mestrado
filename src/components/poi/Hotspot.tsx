@@ -196,7 +196,7 @@ export function Hotspot({
           <Billboard position={[0, radius + 0.35, 0]}>
             <Text
               ref={labelTextRef}
-              fontSize={0.16}
+              fontSize={1}
               color="#ffffff"
               outlineWidth={0.01}
               outlineColor="#000000"

@@ -5,10 +5,10 @@ import { Billboard, Text, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { PointOfInterest, POIMedia } from "./PointOfInterest";
 
-const WIDTH = 3;
-const PADDING = 1;
-const TITLE_HEIGHT = 1.3;
-const DESC_LINE_HEIGHT = 0.28;
+const WIDTH = 6;
+const PADDING = 0.45;
+const TITLE_HEIGHT = 0.65;
+const DESC_LINE_HEIGHT = 0.20;
 const IMAGE_HEIGHT = 1.8;
 const AV_HEIGHT = 0.65;
 
@@ -187,7 +187,7 @@ function AudioBlock({ media, y }: { media: POIMedia; y: number }) {
         />
       </mesh>
       <Text
-        fontSize={16}
+        fontSize={0.2}
         color="#000000"
         anchorX="center"
         anchorY="middle"
@@ -257,7 +257,7 @@ function VideoBlock({ media, y }: { media: POIMedia; y: number }) {
       </mesh>
       {!playing && (
         <Text
-          fontSize={20}
+          fontSize={0.5}
           color="#ffffff"
           outlineWidth={0.01}
           outlineColor="#000000"
@@ -344,13 +344,14 @@ export function HotspotVR({ point, radius }: HotspotVRProps) {
             return (
               <Text
                 key={key}
-                position={[0, block.y, 0.01]}
+                position={[-WIDTH / 2 + PADDING, block.y, 0.01]}
                 fontSize={1} //Tamanho do título
                 color="#000000"
                 anchorX="left"
                 anchorY="middle"
                 maxWidth={WIDTH - PADDING * 2}
                 textAlign="left"
+                overflowWrap="break-word"
                 renderOrder={CONTENT_RENDER_ORDER}
                 material-depthTest={false}
                 material-depthWrite={false}
@@ -364,7 +365,7 @@ export function HotspotVR({ point, radius }: HotspotVRProps) {
             return (
               <Text
                 key={key}
-                position={[0, block.y, 0.01]}
+                position={[-WIDTH / 2 + PADDING, block.y, 0.01]}
                 fontSize={0.5} //Tamanho da descrição 
                 color="#000000"
                 anchorX="left"
@@ -372,6 +373,7 @@ export function HotspotVR({ point, radius }: HotspotVRProps) {
                 maxWidth={WIDTH - PADDING * 2}
                 textAlign="left"
                 renderOrder={CONTENT_RENDER_ORDER}
+                overflowWrap="break-word"
                 material-depthTest={false}
                 material-depthWrite={false}
               >

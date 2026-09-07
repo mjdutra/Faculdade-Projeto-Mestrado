@@ -5,7 +5,7 @@ import { Billboard, Text, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { PointOfInterest, POIMedia } from "./PointOfInterest";
 
-const WIDTH = 8;
+const WIDTH = 3;
 const PADDING = 1;
 const TITLE_HEIGHT = 1.3;
 const DESC_LINE_HEIGHT = 0.28;
@@ -187,7 +187,7 @@ function AudioBlock({ media, y }: { media: POIMedia; y: number }) {
         />
       </mesh>
       <Text
-        fontSize={0.2}
+        fontSize={16}
         color="#000000"
         anchorX="center"
         anchorY="middle"
@@ -257,7 +257,7 @@ function VideoBlock({ media, y }: { media: POIMedia; y: number }) {
       </mesh>
       {!playing && (
         <Text
-          fontSize={3}
+          fontSize={20}
           color="#ffffff"
           outlineWidth={0.01}
           outlineColor="#000000"

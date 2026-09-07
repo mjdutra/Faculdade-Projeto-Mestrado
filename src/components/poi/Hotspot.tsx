@@ -191,7 +191,7 @@ export function Hotspot({
         </>
       )}
 
-      {/* {active && inVR && (
+      {active && inVR && (
         <>
           <Billboard position={[0, radius + 0.35, 0]}>
             <Text
@@ -212,7 +212,7 @@ export function Hotspot({
             <HotspotVR point={point} radius={radius} />
           )}
         </>
-      )} */}
+      )}
     </group>
   );
 }

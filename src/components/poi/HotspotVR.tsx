@@ -5,15 +5,15 @@ import { Billboard, Text, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { PointOfInterest, POIMedia } from "./PointOfInterest";
 
-const WIDTH = 4;
-const PADDING = 0.2;
-const TITLE_HEIGHT = 1.5;
+const WIDTH = 8;
+const PADDING = 1;
+const TITLE_HEIGHT = 4;
 const DESC_LINE_HEIGHT = 0.28;
 const IMAGE_HEIGHT = 1.8;
 const AV_HEIGHT = 0.65;
 
-const SIDE_GAP = 0.5;
-const VERTICAL_LIFT = 0.1;
+const SIDE_GAP = 0.5; //Esfera e painel
+const VERTICAL_LIFT = 0.1; //Painel levantado
 const FOLLOW_LERP = 0.2;
 
 // Margem extra do painel
@@ -127,12 +127,12 @@ function ImageBlock({ media, y }: { media: POIMedia; y: number }) {
           </mesh>
           <Text
             position={[0, 0, 0.01]}
-            fontSize={1}
+            fontSize={3}
             color="#000000"
-            anchorX="center"
+            anchorX="left"
             anchorY="middle"
             maxWidth={contentWidth - 0.16}
-            textAlign="center"
+            textAlign="left"
             renderOrder={OVERLAY_RENDER_ORDER}
             material-depthTest={false}
             material-depthWrite={false}
@@ -345,12 +345,12 @@ export function HotspotVR({ point, radius }: HotspotVRProps) {
               <Text
                 key={key}
                 position={[0, block.y, 0.01]}
-                fontSize={0.32}
+                fontSize={4} //Tamanho do título
                 color="#000000"
-                anchorX="center"
+                anchorX="left"
                 anchorY="middle"
                 maxWidth={WIDTH - PADDING * 2}
-                textAlign="center"
+                textAlign="left"
                 renderOrder={CONTENT_RENDER_ORDER}
                 material-depthTest={false}
                 material-depthWrite={false}
@@ -365,12 +365,12 @@ export function HotspotVR({ point, radius }: HotspotVRProps) {
               <Text
                 key={key}
                 position={[0, block.y, 0.01]}
-                fontSize={0.2}
+                fontSize={3} //Tamanho da descrição 
                 color="#000000"
-                anchorX="center"
+                anchorX="left"
                 anchorY="middle"
                 maxWidth={WIDTH - PADDING * 2}
-                textAlign="center"
+                textAlign="left"
                 renderOrder={CONTENT_RENDER_ORDER}
                 material-depthTest={false}
                 material-depthWrite={false}

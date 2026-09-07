@@ -7,7 +7,7 @@ import { PointOfInterest, POIMedia } from "./PointOfInterest";
 
 const WIDTH = 8;
 const PADDING = 1;
-const TITLE_HEIGHT = 4;
+const TITLE_HEIGHT = 1.3;
 const DESC_LINE_HEIGHT = 0.28;
 const IMAGE_HEIGHT = 1.8;
 const AV_HEIGHT = 0.65;
@@ -257,7 +257,7 @@ function VideoBlock({ media, y }: { media: POIMedia; y: number }) {
       </mesh>
       {!playing && (
         <Text
-          fontSize={0.18}
+          fontSize={3}
           color="#ffffff"
           outlineWidth={0.01}
           outlineColor="#000000"
@@ -345,7 +345,7 @@ export function HotspotVR({ point, radius }: HotspotVRProps) {
               <Text
                 key={key}
                 position={[0, block.y, 0.01]}
-                fontSize={4} //Tamanho do título
+                fontSize={1} //Tamanho do título
                 color="#000000"
                 anchorX="left"
                 anchorY="middle"
@@ -365,7 +365,7 @@ export function HotspotVR({ point, radius }: HotspotVRProps) {
               <Text
                 key={key}
                 position={[0, block.y, 0.01]}
-                fontSize={3} //Tamanho da descrição 
+                fontSize={0.5} //Tamanho da descrição 
                 color="#000000"
                 anchorX="left"
                 anchorY="middle"

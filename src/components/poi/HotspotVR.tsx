@@ -5,9 +5,9 @@ import { Billboard, Text, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { PointOfInterest, POIMedia } from "./PointOfInterest";
 
-const WIDTH = 3.4;
+const WIDTH = 4;
 const PADDING = 0.2;
-const TITLE_HEIGHT = 0.52;
+const TITLE_HEIGHT = 1.5;
 const DESC_LINE_HEIGHT = 0.28;
 const IMAGE_HEIGHT = 1.8;
 const AV_HEIGHT = 0.65;
@@ -127,7 +127,7 @@ function ImageBlock({ media, y }: { media: POIMedia; y: number }) {
           </mesh>
           <Text
             position={[0, 0, 0.01]}
-            fontSize={0.12}
+            fontSize={1}
             color="#000000"
             anchorX="center"
             anchorY="middle"

@@ -5,19 +5,19 @@ import { Billboard, Text, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { PointOfInterest, POIMedia } from "./PointOfInterest";
 
-const WIDTH = 4;
+const WIDTH = 3.4;
 const PADDING = 0.2;
-const TITLE_HEIGHT = 1.5;
-const DESC_LINE_HEIGHT = 0.22;
+const TITLE_HEIGHT = 0.52;
+const DESC_LINE_HEIGHT = 0.28;
 const IMAGE_HEIGHT = 1.8;
-const AV_HEIGHT = 0.6;
+const AV_HEIGHT = 0.65;
 
 const SIDE_GAP = 0.5;
 const VERTICAL_LIFT = 0.1;
 const FOLLOW_LERP = 0.2;
 
 // Margem extra do painel
-const BLUR_MARGIN = 0.24;
+const BLUR_MARGIN = 0.3;
 
 
 const PANEL_RENDER_ORDER = 20;
@@ -46,7 +46,7 @@ function drawRoundedRect(
 
 function getFrostedPanelTexture(): THREE.CanvasTexture | null {
   if (frostedPanelTexture) return frostedPanelTexture;
-  if (typeof document === "undefined") return null;
+  if (typeof document === "undefined") return null; 
 
   const size = 512;
   const blurPx = 30;
@@ -114,9 +114,9 @@ function ImageBlock({ media, y }: { media: POIMedia; y: number }) {
       </mesh>
 
       {media.caption && (
-        <group position={[0, -imageHeight / 2 + 0.14, 0.02]}>
+        <group position={[0, -imageHeight / 2 + 0.18, 0.02]}>
           <mesh renderOrder={CONTENT_RENDER_ORDER}>
-            <planeGeometry args={[contentWidth, 0.26]} />
+            <planeGeometry args={[contentWidth, 0.34]} />
             <meshBasicMaterial
               color="#ffffff"
               transparent
@@ -127,7 +127,7 @@ function ImageBlock({ media, y }: { media: POIMedia; y: number }) {
           </mesh>
           <Text
             position={[0, 0, 0.01]}
-            fontSize={1}
+            fontSize={0.12}
             color="#000000"
             anchorX="center"
             anchorY="middle"
@@ -179,7 +179,7 @@ function AudioBlock({ media, y }: { media: POIMedia; y: number }) {
   return (
     <group position={[0, y, 0.01]} onClick={toggle} pointerEventsType={{ deny: "grab" }}>
       <mesh renderOrder={CONTENT_RENDER_ORDER}>
-        <planeGeometry args={[contentWidth, AV_HEIGHT - 0.1]} />
+        <planeGeometry args={[contentWidth, AV_HEIGHT - 0.13]} />
         <meshBasicMaterial
           color={playing ? "#e5e5e5" : "#f2f2f2"}
           depthTest={false}
@@ -187,7 +187,7 @@ function AudioBlock({ media, y }: { media: POIMedia; y: number }) {
         />
       </mesh>
       <Text
-        fontSize={0.15}
+        fontSize={0.2}
         color="#000000"
         anchorX="center"
         anchorY="middle"
@@ -257,9 +257,9 @@ function VideoBlock({ media, y }: { media: POIMedia; y: number }) {
       </mesh>
       {!playing && (
         <Text
-          fontSize={0.14}
+          fontSize={0.18}
           color="#ffffff"
-          outlineWidth={0.008}
+          outlineWidth={0.01}
           outlineColor="#000000"
           anchorX="center"
           anchorY="middle"
@@ -326,7 +326,7 @@ export function HotspotVR({ point, radius }: HotspotVRProps) {
             position={[0, blocks[0].y - blocks[0].height / 2 - PADDING / 2, 0.008]}
             renderOrder={DIVIDER_RENDER_ORDER}
           >
-            <planeGeometry args={[WIDTH - PADDING * 2.4, 0.012]} />
+            <planeGeometry args={[WIDTH - PADDING * 2.4, 0.016]} />
             <meshBasicMaterial
               color="#000000"
               transparent
@@ -345,7 +345,7 @@ export function HotspotVR({ point, radius }: HotspotVRProps) {
               <Text
                 key={key}
                 position={[0, block.y, 0.01]}
-                fontSize={0.24}
+                fontSize={0.32}
                 color="#000000"
                 anchorX="center"
                 anchorY="middle"
@@ -365,7 +365,7 @@ export function HotspotVR({ point, radius }: HotspotVRProps) {
               <Text
                 key={key}
                 position={[0, block.y, 0.01]}
-                fontSize={0.15}
+                fontSize={0.2}
                 color="#000000"
                 anchorX="center"
                 anchorY="middle"

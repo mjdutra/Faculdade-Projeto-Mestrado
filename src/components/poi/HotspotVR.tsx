@@ -5,12 +5,12 @@ import { Billboard, Text, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { PointOfInterest, POIMedia } from "./PointOfInterest";
 
-const WIDTH = 2.6;
-const PADDING = 0.15;
-const TITLE_HEIGHT = 0.4;
+const WIDTH = 4;
+const PADDING = 0.2;
+const TITLE_HEIGHT = 1.5;
 const DESC_LINE_HEIGHT = 0.22;
-const IMAGE_HEIGHT = 1.4;
-const AV_HEIGHT = 0.5;
+const IMAGE_HEIGHT = 1.8;
+const AV_HEIGHT = 0.6;
 
 const SIDE_GAP = 0.5;
 const VERTICAL_LIFT = 0.1;
@@ -46,7 +46,7 @@ function drawRoundedRect(
 
 function getFrostedPanelTexture(): THREE.CanvasTexture | null {
   if (frostedPanelTexture) return frostedPanelTexture;
-  if (typeof document === "undefined") return null; // segurança para SSR
+  if (typeof document === "undefined") return null;
 
   const size = 512;
   const blurPx = 30;
@@ -127,7 +127,7 @@ function ImageBlock({ media, y }: { media: POIMedia; y: number }) {
           </mesh>
           <Text
             position={[0, 0, 0.01]}
-            fontSize={0.09}
+            fontSize={1}
             color="#000000"
             anchorX="center"
             anchorY="middle"
